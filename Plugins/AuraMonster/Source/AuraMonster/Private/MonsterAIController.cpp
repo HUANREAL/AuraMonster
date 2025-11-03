@@ -383,20 +383,19 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	
+	// Compute trace directions relative to the monster's current orientation
+	const FVector TraceDirections[] = {
+		-ControlledMonster->GetActorUpVector(),    // Down relative to monster
+		ControlledMonster->GetActorForwardVector(), // Forward
+		ControlledMonster->GetActorUpVector(),      // Up relative to monster
+		ControlledMonster->GetActorRightVector(),   // Right
+		-ControlledMonster->GetActorRightVector(),  // Left
+		-ControlledMonster->GetActorForwardVector() // Backward
+	};
+
 	// Try multiple random directions to find a valid surface location
 	for (int32 Attempt = 0; Attempt < MaxSurfaceSearchAttempts; ++Attempt)
 	{
-		// Compute trace directions relative to the monster's current orientation
-		// Done per-attempt to account for potential orientation changes
-		const FVector TraceDirections[] = {
-			-ControlledMonster->GetActorUpVector(),    // Down relative to monster
-			ControlledMonster->GetActorForwardVector(), // Forward
-			ControlledMonster->GetActorUpVector(),      // Up relative to monster
-			ControlledMonster->GetActorRightVector(),   // Right
-			-ControlledMonster->GetActorRightVector(),  // Left
-			-ControlledMonster->GetActorForwardVector() // Backward
-		};
-		
 		// Generate a random direction
 		FVector RandomDirection = FMath::VRand();
 		
