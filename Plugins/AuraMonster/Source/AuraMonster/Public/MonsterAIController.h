@@ -102,6 +102,38 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
 	float PatrolAcceptanceRadius;
 
+	/** Chance (0.0 to 1.0) to transition to a different surface mid-patrol when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionChance;
+
+	/** Minimum time in seconds between surface transition attempts when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MinSurfaceTransitionInterval;
+
+	/** Maximum time in seconds between surface transition attempts when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MaxSurfaceTransitionInterval;
+
+	/** Maximum angle in degrees for surface transitions (e.g., 90 for wall climbing) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MaxSurfaceAngle;
+
+	/** Distance to search for adjacent surfaces when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float SurfaceSearchDistance;
+
+	/** Maximum number of random attempts to find a valid crawling surface destination */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "1", ClampMax = "20"))
+	int32 MaxSurfaceSearchAttempts;
+
+	/** Ratio of SurfaceSearchDistance to use for surface transition searches (0.0-1.0) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionSearchRatio;
+
+	/** Threshold for detecting different surfaces (0.0-1.0, lower = more sensitive to angle changes) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionAngleThreshold;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
@@ -143,6 +175,30 @@ private:
 	UPROPERTY()
 	UPathFollowingComponent* CachedPathFollowingComp;
 
+	/** Time accumulated since last surface transition check when crawling */
+	float TimeSinceSurfaceTransitionCheck = 0.0f;
+
+	/** Target time until next surface transition check when crawling */
+	float NextSurfaceTransitionCheckTime = 0.0f;
+
+	/** Current crawling destination for surface-aware pathfinding */
+	FVector CurrentCrawlingDestination;
+
+	/** Whether a valid crawling destination has been set */
+	bool bHasCrawlingDestination;
+
+	/** Cached surface offset distance from the controlled monster */
+	float CachedSurfaceOffsetDistance = 50.0f;
+
+	/** Cached cosine of MaxSurfaceAngle for performance optimization */
+	float CachedMaxSurfaceAngleCos = 0.0f;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
+
+	/** Find a crawling destination on nearby surfaces (walls, ceilings, floors) */
+	bool FindCrawlingSurfaceDestination(FVector& OutDestination);
+
+	/** Attempt to transition to an adjacent surface for unpredictability */
+	void AttemptSurfaceTransition();
 };
