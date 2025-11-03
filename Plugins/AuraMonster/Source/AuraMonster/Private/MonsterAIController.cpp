@@ -94,13 +94,10 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 
 	// Update breathing cycle
 	BreathingCycleTime += DeltaTime;
-	if (BreathingCycleTime >= BreathingCycleDuration)
-	{
-		BreathingCycleTime = 0.0f;
-	}
+	BreathingCycleTime = FMath::Fmod(BreathingCycleTime, BreathingCycleDuration);
 
 	// Calculate breathing intensity (sine wave for smooth breathing)
-	float BreathingIntensity = (FMath::Sin((BreathingCycleTime / BreathingCycleDuration) * 2.0f * PI) + 1.0f) * 0.5f;
+	float BreathingIntensity = (FMath::Sin((BreathingCycleTime / BreathingCycleDuration) * 2.0f * UE_PI) + 1.0f) * 0.5f;
 	ControlledMonster->OnBreathingUpdate(BreathingIntensity);
 
 	// Handle subtle random movements
