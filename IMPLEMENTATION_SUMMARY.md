@@ -24,7 +24,7 @@ All behavior states have been successfully implemented:
 ### 1. Plugin Structure
 A complete Unreal Engine 4 plugin with proper directory structure:
 ```
-Plugins/AuraMonster/
+AuraMonster/
 ├── AuraMonster.uplugin          # Plugin descriptor
 ├── README.md                    # Full documentation
 ├── QUICKSTART.md                # Quick start guide
@@ -287,7 +287,7 @@ When integrating into a UE4 project, test:
 ## Next Steps for Users
 
 1. **Copy Plugin**
-   - Copy `Plugins/AuraMonster` to your UE4 project
+   - Copy the `AuraMonster` folder to your UE4 project's `Plugins` directory
 
 2. **Enable Plugin**
    - Open project in UE4 Editor
