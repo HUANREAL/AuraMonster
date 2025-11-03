@@ -8,6 +8,8 @@
 #include "MonsterAIController.generated.h"
 
 class AMonsterCharacter;
+class UNavigationSystemV1;
+class UPathFollowingComponent;
 
 /**
  * AI Controller for managing monster behavior and state transitions
@@ -84,6 +86,22 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float PatrolTransitionChance;
 
+	/** Maximum distance from current position to select patrol destinations */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
+	float PatrolRange;
+
+	/** Minimum time in seconds to wait at each patrol destination (to listen/look around) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
+	float MinStopDuration;
+
+	/** Maximum time in seconds to wait at each patrol destination (to listen/look around) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
+	float MaxStopDuration;
+
+	/** Acceptance radius in units - how close the monster needs to get to the destination */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
+	float PatrolAcceptanceRadius;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
@@ -107,6 +125,23 @@ private:
 
 	/** Current time in breathing cycle */
 	float BreathingCycleTime;
+
+	/** Time accumulated while stopped at current patrol destination */
+	float CurrentStopTime;
+
+	/** Target duration to stop at current patrol destination */
+	float TargetStopDuration;
+
+	/** Whether the monster is currently stopped and listening/looking around */
+	bool bIsStoppedAtDestination;
+
+	/** Cached reference to navigation system */
+	UPROPERTY()
+	UNavigationSystemV1* CachedNavSystem;
+
+	/** Cached reference to path following component */
+	UPROPERTY()
+	UPathFollowingComponent* CachedPathFollowingComp;
 
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;

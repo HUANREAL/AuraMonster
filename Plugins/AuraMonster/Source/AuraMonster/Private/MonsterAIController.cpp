@@ -3,6 +3,7 @@
 #include "MonsterAIController.h"
 #include "MonsterCharacter.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
 
 AMonsterAIController::AMonsterAIController()
 {
@@ -18,12 +19,27 @@ AMonsterAIController::AMonsterAIController()
 	BreathingCycleDuration = 4.0f;
 	PatrolTransitionChance = 0.3f;
 
+	// Initialize patrol behavior parameters with reasonable defaults
+	PatrolRange = 1000.0f;
+	MinStopDuration = 2.0f;
+	MaxStopDuration = 5.0f;
+	PatrolAcceptanceRadius = 100.0f;
+
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
 	TimeSinceLastSubtleMovement = 0.0f;
 	NextSubtleMovementTime = 0.0f;
 	BreathingCycleTime = 0.0f;
+	
+	// Initialize patrol variables
+	CurrentStopTime = 0.0f;
+	TargetStopDuration = 0.0f;
+	bIsStoppedAtDestination = false;
+	
+	// Initialize cached references
+	CachedNavSystem = nullptr;
+	CachedPathFollowingComp = nullptr;
 }
 
 void AMonsterAIController::BeginPlay()
@@ -32,6 +48,12 @@ void AMonsterAIController::BeginPlay()
 
 	// Cache reference to the controlled monster
 	ControlledMonster = Cast<AMonsterCharacter>(GetPawn());
+	
+	// Cache navigation system reference
+	CachedNavSystem = UNavigationSystemV1::GetNavigationSystem(GetWorld());
+	
+	// Cache path following component reference
+	CachedPathFollowingComp = GetPathFollowingComponent();
 	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
@@ -154,9 +176,97 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 
 void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
 {
-	// Default patrol standing behavior
-	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
-	// For example: move to patrol points, look around, etc.
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Check if we're currently stopped at a destination to listen/look around
+	if (bIsStoppedAtDestination)
+	{
+		CurrentStopTime += DeltaTime;
+		
+		// Check if we've waited long enough
+		if (CurrentStopTime >= TargetStopDuration)
+		{
+			// Done stopping, ready to move to next destination
+			bIsStoppedAtDestination = false;
+			CurrentStopTime = 0.0f;
+			// Fall through to select new destination
+		}
+		else
+		{
+			// Still waiting, don't move yet
+			return;
+		}
+	}
+
+	// Check if we're currently moving to a destination using cached component
+	if (CachedPathFollowingComp)
+	{
+		// Check current path following status
+		EPathFollowingStatus::Type Status = CachedPathFollowingComp->GetStatus();
+
+		// Only check DidMoveReachGoal if currently moving
+		if (Status == EPathFollowingStatus::Moving)
+		{
+			// Check if we've reached the current destination
+			if (CachedPathFollowingComp->DidMoveReachGoal())
+			{
+				// We've reached destination, now stop to listen/look around
+				bIsStoppedAtDestination = true;
+				CurrentStopTime = 0.0f;
+				TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+				
+				// Stop movement
+				StopMovement();
+				return;
+			}
+
+			// Still moving to current destination, continue
+			return;
+		}
+		
+		// If the status is not Idle, do not select a new destination
+		// This prevents rapid destination changes during transient states
+		if (Status != EPathFollowingStatus::Idle)
+		{
+			// For Paused, Waiting, Aborting, etc. - wait for status to settle
+			return;
+		}
+	}
+
+	// Need to select a new random patrol destination using cached navigation system
+	if (!CachedNavSystem)
+	{
+		return;
+	}
+
+	// Get current location
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	
+	// Try to find a random reachable point within patrol range
+	FNavLocation ResultLocation;
+	bool bFoundLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
+	
+	if (bFoundLocation)
+	{
+		// Move to the new patrol destination with deliberate, heavy pace
+		// The movement speed is configured via PatrolStandingSpeed property in AMonsterCharacter
+		MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+	}
+	else
+	{
+		// Failed to find a reachable location, try again with a smaller radius
+		FNavLocation CloserResultLocation;
+		bool bFoundCloserLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange * 0.5f, CloserResultLocation);
+		if (bFoundCloserLocation)
+		{
+			MoveToLocation(CloserResultLocation.Location, PatrolAcceptanceRadius);
+		}
+		// If still can't find a location, the monster will try again on the next tick
+		// This prevents getting stuck while allowing for environmental constraints
+	}
 }
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
@@ -191,6 +301,13 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		
 		// Reset breathing cycle
 		BreathingCycleTime = 0.0f;
+	}
+	else if (NewState == EMonsterBehaviorState::PatrolStanding || NewState == EMonsterBehaviorState::PatrolCrawling)
+	{
+		// Reset patrol timing variables
+		CurrentStopTime = 0.0f;
+		TargetStopDuration = 0.0f;
+		bIsStoppedAtDestination = false;
 	}
 }
 
