@@ -74,7 +74,7 @@ void AMonsterAIController::BeginPlay()
 	// Cache surface offset distance from controlled monster for performance
 	if (ControlledMonster)
 	{
-		CachedSurfaceOffsetDistance = ControlledMonster->SurfaceOffsetDistance;
+		CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
 	}
 	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
@@ -557,7 +557,7 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 			// Refresh cached surface offset distance
 			if (ControlledMonster)
 			{
-				CachedSurfaceOffsetDistance = ControlledMonster->SurfaceOffsetDistance;
+				CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
 			}
 		}
 	}

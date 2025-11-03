@@ -47,6 +47,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
 	bool IsAttachedToSurface() const { return bIsAttachedToSurface; }
 
+	/** Get the surface offset distance used when crawling */
+	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
+	float GetSurfaceOffsetDistance() const { return SurfaceOffsetDistance; }
+
 	/** Update surface attachment and orientation for crawling */
 	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
 	void UpdateSurfaceAttachment(float DeltaTime);

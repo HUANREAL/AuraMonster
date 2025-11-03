@@ -64,6 +64,7 @@ Base character class for monsters with:
 - `OnBreathingUpdate(BreathingIntensity)` - Event called each frame with breathing intensity 0.0-1.0 (Blueprint implementable)
 - `GetCurrentSurfaceNormal()` - Returns the current surface normal the monster is attached to
 - `IsAttachedToSurface()` - Returns whether the monster is currently attached to a surface
+- `GetSurfaceOffsetDistance()` - Returns the surface offset distance used when crawling
 - `UpdateSurfaceAttachment(DeltaTime)` - Updates surface attachment and orientation (automatically called when crawling)
 - `OnSurfaceTransition(NewSurfaceNormal)` - Event called when transitioning to a new surface (Blueprint implementable)
 
