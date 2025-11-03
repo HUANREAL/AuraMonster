@@ -59,6 +59,31 @@ protected:
 	void OnExitState(EMonsterBehaviorState OldState);
 	virtual void OnExitState_Implementation(EMonsterBehaviorState OldState);
 
+protected:
+	/** Minimum time in seconds to stay idle before potentially transitioning to patrol */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle")
+	float MinIdleDuration;
+
+	/** Maximum time in seconds to stay idle before potentially transitioning to patrol */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle")
+	float MaxIdleDuration;
+
+	/** Minimum time in seconds between subtle movements (neck twitches, finger shifts) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle")
+	float MinSubtleMovementInterval;
+
+	/** Maximum time in seconds between subtle movements (neck twitches, finger shifts) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle")
+	float MaxSubtleMovementInterval;
+
+	/** Breathing cycle duration in seconds */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle")
+	float BreathingCycleDuration;
+
+	/** Chance (0.0 to 1.0) that monster will transition to patrol after idle duration */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Idle", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float PatrolTransitionChance;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
@@ -67,4 +92,22 @@ private:
 	/** Reference to the controlled monster character */
 	UPROPERTY()
 	AMonsterCharacter* ControlledMonster;
+
+	/** Time accumulated in current idle period */
+	float CurrentIdleTime;
+
+	/** Target idle duration for current idle period */
+	float TargetIdleDuration;
+
+	/** Time accumulated since last subtle movement */
+	float TimeSinceLastSubtleMovement;
+
+	/** Target time until next subtle movement */
+	float NextSubtleMovementTime;
+
+	/** Current time in breathing cycle */
+	float BreathingCycleTime;
+
+	/** Helper function to get a random value within a validated range */
+	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 };

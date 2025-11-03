@@ -9,6 +9,21 @@ AMonsterAIController::AMonsterAIController()
 	PrimaryActorTick.bCanEverTick = true;
 	CurrentState = EMonsterBehaviorState::Idle;
 	ControlledMonster = nullptr;
+
+	// Initialize idle behavior parameters with reasonable defaults
+	MinIdleDuration = 5.0f;
+	MaxIdleDuration = 15.0f;
+	MinSubtleMovementInterval = 2.0f;
+	MaxSubtleMovementInterval = 6.0f;
+	BreathingCycleDuration = 4.0f;
+	PatrolTransitionChance = 0.3f;
+
+	// Initialize timing variables
+	CurrentIdleTime = 0.0f;
+	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
+	TimeSinceLastSubtleMovement = 0.0f;
+	NextSubtleMovementTime = 0.0f;
+	BreathingCycleTime = 0.0f;
 }
 
 void AMonsterAIController::BeginPlay()
@@ -17,6 +32,9 @@ void AMonsterAIController::BeginPlay()
 
 	// Cache reference to the controlled monster
 	ControlledMonster = Cast<AMonsterCharacter>(GetPawn());
+	
+	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
+	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
 	
 	// Initialize with idle state
 	if (ControlledMonster)
@@ -69,8 +87,69 @@ void AMonsterAIController::TransitionToState(EMonsterBehaviorState NewState)
 
 void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 {
-	// Default idle behavior - do nothing
-	// This can be overridden in Blueprint or subclasses
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Update idle time
+	CurrentIdleTime += DeltaTime;
+
+	// Update breathing cycle - only if BreathingCycleDuration is valid
+	if (BreathingCycleDuration > 0.0f)
+	{
+		BreathingCycleTime += DeltaTime;
+		BreathingCycleTime = FMath::Fmod(BreathingCycleTime, BreathingCycleDuration);
+
+		// Calculate breathing intensity (sine wave for smooth breathing)
+		// Multiply by 2*PI to convert normalized time (0-1) to radians for full sine wave cycle
+		const float NormalizedTime = BreathingCycleTime / BreathingCycleDuration;
+		float BreathingIntensity = (FMath::Sin(NormalizedTime * 2.0f * PI) + 1.0f) * 0.5f;
+		ControlledMonster->OnBreathingUpdate(BreathingIntensity);
+	}
+
+	// Handle subtle random movements
+	TimeSinceLastSubtleMovement += DeltaTime;
+	if (TimeSinceLastSubtleMovement >= NextSubtleMovementTime)
+	{
+		// Trigger a random subtle movement
+		float RandomValue = FMath::FRand();
+		if (RandomValue < 0.5f)
+		{
+			// Neck twitch
+			ControlledMonster->OnNeckTwitch();
+		}
+		else
+		{
+			// Finger shift
+			ControlledMonster->OnFingerShift();
+		}
+
+		// Reset timer and set next movement time
+		TimeSinceLastSubtleMovement = 0.0f;
+		NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+	}
+
+	// Check if should transition to patrol
+	if (CurrentIdleTime >= TargetIdleDuration)
+	{
+		// Decide whether to patrol or stay idle
+		float RandomValue = FMath::FRand();
+		if (RandomValue < PatrolTransitionChance)
+		{
+			// Randomly choose between standing and crawling patrol
+			EMonsterBehaviorState NewState = (FMath::FRand() < 0.5f) 
+				? EMonsterBehaviorState::PatrolStanding 
+				: EMonsterBehaviorState::PatrolCrawling;
+			TransitionToState(NewState);
+		}
+		else
+		{
+			// Stay idle but reset the idle duration
+			CurrentIdleTime = 0.0f;
+			TargetIdleDuration = GetValidatedRandomRange(MinIdleDuration, MaxIdleDuration);
+		}
+	}
 }
 
 void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
@@ -89,12 +168,42 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
 {
-	// Called when entering a new state
-	// Can be overridden to set up state-specific logic
+	// Initialize state-specific variables when entering a state
+	if (NewState == EMonsterBehaviorState::Idle)
+	{
+		// Validate breathing cycle duration to avoid division by zero
+		if (BreathingCycleDuration <= 0.0f)
+		{
+			BreathingCycleDuration = 4.0f;
+		}
+		
+		// Reset idle timing
+		CurrentIdleTime = 0.0f;
+		
+		// Validate idle duration range
+		TargetIdleDuration = GetValidatedRandomRange(MinIdleDuration, MaxIdleDuration);
+		
+		// Reset subtle movement timing
+		TimeSinceLastSubtleMovement = 0.0f;
+		
+		// Validate subtle movement interval range
+		NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		
+		// Reset breathing cycle
+		BreathingCycleTime = 0.0f;
+	}
 }
 
 void AMonsterAIController::OnExitState_Implementation(EMonsterBehaviorState OldState)
 {
 	// Called when exiting a state
 	// Can be overridden to clean up state-specific logic
+}
+
+float AMonsterAIController::GetValidatedRandomRange(float MinValue, float MaxValue) const
+{
+	// Ensure MinValue <= MaxValue by using FMath::Min/Max
+	float ValidMin = FMath::Min(MinValue, MaxValue);
+	float ValidMax = FMath::Max(MinValue, MaxValue);
+	return FMath::RandRange(ValidMin, ValidMax);
 }
