@@ -399,23 +399,8 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 		// Generate a random direction
 		FVector RandomDirection = FMath::VRand();
 		
-		// Generate raw search location
-		FVector RawSearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
-		
-		// Validate the search location using navigation system
-		FNavLocation ProjectedLocation;
-		bool bIsNavValid = false;
-		if (CachedNavSystem)
-		{
-			bIsNavValid = CachedNavSystem->ProjectPointToNavigation(
-				RawSearchLocation,
-				ProjectedLocation,
-				FVector(100.f, 100.f, 200.f) // Extent for projection tolerance
-			);
-		}
-		
-		// Use projected location if valid, otherwise use raw location
-		FVector SearchLocation = bIsNavValid ? ProjectedLocation.Location : RawSearchLocation;
+		// Generate search location (surface tracing will validate actual locations)
+		FVector SearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
 		
 		// Trace to find surfaces in multiple directions
 		for (const FVector& TraceDir : TraceDirections)

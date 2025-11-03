@@ -170,6 +170,21 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 			{
 				ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, FVector::ForwardVector);
 			}
+			
+			// Final fallback: if still nearly zero, use a guaranteed perpendicular vector
+			if (ProjectedForward.IsNearlyZero())
+			{
+				// If surface normal is nearly vertical (up/down), use right vector; otherwise use up vector
+				if (FMath::Abs(NewSurfaceNormal.Z) > 0.99f)
+				{
+					ProjectedForward = FVector::RightVector;
+				}
+				else
+				{
+					ProjectedForward = FVector::UpVector;
+				}
+			}
+			
 			ProjectedForward.Normalize();
 		}
 
