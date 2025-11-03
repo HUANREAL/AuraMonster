@@ -18,6 +18,12 @@ AMonsterAIController::AMonsterAIController()
 	BreathingCycleDuration = 4.0f;
 	PatrolTransitionChance = 0.3f;
 
+	// Ensure breathing cycle duration is valid (avoid division by zero)
+	if (BreathingCycleDuration <= 0.0f)
+	{
+		BreathingCycleDuration = 4.0f;
+	}
+
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = 0.0f;
@@ -89,6 +95,12 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		return;
 	}
 
+	// Validate breathing cycle duration to avoid division by zero
+	if (BreathingCycleDuration <= 0.0f)
+	{
+		BreathingCycleDuration = 4.0f;
+	}
+
 	// Update idle time
 	CurrentIdleTime += DeltaTime;
 
@@ -97,7 +109,8 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 	BreathingCycleTime = FMath::Fmod(BreathingCycleTime, BreathingCycleDuration);
 
 	// Calculate breathing intensity (sine wave for smooth breathing)
-	float BreathingIntensity = (FMath::Sin((BreathingCycleTime / BreathingCycleDuration) * 2.0f * UE_PI) + 1.0f) * 0.5f;
+	const float NormalizedTime = BreathingCycleTime / BreathingCycleDuration;
+	float BreathingIntensity = (FMath::Sin(NormalizedTime * 2.0f * UE_PI) + 1.0f) * 0.5f;
 	ControlledMonster->OnBreathingUpdate(BreathingIntensity);
 
 	// Handle subtle random movements
