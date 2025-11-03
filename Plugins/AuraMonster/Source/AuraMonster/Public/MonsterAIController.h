@@ -176,10 +176,10 @@ private:
 	UPathFollowingComponent* CachedPathFollowingComp;
 
 	/** Time accumulated since last surface transition check when crawling */
-	float TimeSinceSurfaceTransitionCheck;
+	float TimeSinceSurfaceTransitionCheck = 0.0f;
 
 	/** Target time until next surface transition check when crawling */
-	float NextSurfaceTransitionCheckTime;
+	float NextSurfaceTransitionCheckTime = 0.0f;
 
 	/** Current crawling destination for surface-aware pathfinding */
 	FVector CurrentCrawlingDestination;
@@ -188,7 +188,7 @@ private:
 	bool bHasCrawlingDestination;
 
 	/** Cached surface offset distance from the controlled monster */
-	float CachedSurfaceOffsetDistance;
+	float CachedSurfaceOffsetDistance = 50.0f;
 
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
