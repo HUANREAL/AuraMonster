@@ -204,29 +204,30 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	// Check if we're currently moving to a destination using cached component
 	if (CachedPathFollowingComp)
 	{
-		// Check if we've reached the current destination
-		if (CachedPathFollowingComp->DidMoveReachGoal())
-		{
-			// We've reached destination, now stop to listen/look around
-			bIsStoppedAtDestination = true;
-			CurrentStopTime = 0.0f;
-			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
-			
-			// Stop movement
-			StopMovement();
-			return;
-		}
-		
 		// Check current path following status
 		EPathFollowingStatus::Type Status = CachedPathFollowingComp->GetStatus();
-		
-		// Still moving to current destination, continue
+
+		// Only check DidMoveReachGoal if currently moving
 		if (Status == EPathFollowingStatus::Moving)
 		{
+			// Check if we've reached the current destination
+			if (CachedPathFollowingComp->DidMoveReachGoal())
+			{
+				// We've reached destination, now stop to listen/look around
+				bIsStoppedAtDestination = true;
+				CurrentStopTime = 0.0f;
+				TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+				
+				// Stop movement
+				StopMovement();
+				return;
+			}
+
+			// Still moving to current destination, continue
 			return;
 		}
 		
-		// If the status is not Idle or Ready to move, do not select a new destination
+		// If the status is not Idle, do not select a new destination
 		// This prevents rapid destination changes during transient states
 		if (Status != EPathFollowingStatus::Idle)
 		{
@@ -257,10 +258,11 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	else
 	{
 		// Failed to find a reachable location, try again with a smaller radius
-		bool bFoundCloserLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange * 0.5f, ResultLocation);
+		FNavLocation CloserResultLocation;
+		bool bFoundCloserLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange * 0.5f, CloserResultLocation);
 		if (bFoundCloserLocation)
 		{
-			MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+			MoveToLocation(CloserResultLocation.Location, PatrolAcceptanceRadius);
 		}
 		// If still can't find a location, the monster will try again on the next tick
 		// This prevents getting stuck while allowing for environmental constraints
