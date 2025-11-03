@@ -190,6 +190,9 @@ private:
 	/** Cached surface offset distance from the controlled monster */
 	float CachedSurfaceOffsetDistance = 50.0f;
 
+	/** Cached cosine of MaxSurfaceAngle for performance optimization */
+	float CachedMaxSurfaceAngleCos = 0.0f;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 

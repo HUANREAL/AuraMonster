@@ -78,6 +78,9 @@ void AMonsterAIController::BeginPlay()
 		CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
 	}
 	
+	// Pre-compute cosine of MaxSurfaceAngle for performance optimization
+	CachedMaxSurfaceAngleCos = FMath::Cos(FMath::DegreesToRadians(MaxSurfaceAngle));
+	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
 	
@@ -421,13 +424,13 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 			
 			if (bHit)
 			{
-				// Check if the surface angle is within acceptable range
+				// Check if the surface angle is within acceptable range by comparing dot product
+				// to cached cosine value (avoids expensive acos computation)
 				// Clamp dot product to prevent NaN from floating-point precision errors
 				FVector CurrentSurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
 				float DotProduct = FMath::Clamp(FVector::DotProduct(HitResult.ImpactNormal, CurrentSurfaceNormal), -1.0f, 1.0f);
-				float SurfaceAngle = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
 				
-				if (SurfaceAngle <= MaxSurfaceAngle)
+				if (DotProduct >= CachedMaxSurfaceAngleCos)
 				{
 					// Valid surface found - offset slightly from surface using cached value
 					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
@@ -468,7 +471,7 @@ void AMonsterAIController::AttemptSurfaceTransition()
 	}
 	
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
-	FVector CurrentUpVector = ControlledMonster->GetActorUpVector();
+	FVector CurrentUpVector = ControlledMonster->GetCurrentSurfaceNormal();
 	
 	// Calculate search directions dynamically based on current character orientation
 	// to look for adjacent surfaces at different angles
@@ -562,11 +565,12 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 			NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
 			bHasCrawlingDestination = false;
 			
-			// Refresh cached surface offset distance
+			// Refresh cached values
 			if (ControlledMonster)
 			{
 				CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
 			}
+			CachedMaxSurfaceAngleCos = FMath::Cos(FMath::DegreesToRadians(MaxSurfaceAngle));
 		}
 	}
 }
