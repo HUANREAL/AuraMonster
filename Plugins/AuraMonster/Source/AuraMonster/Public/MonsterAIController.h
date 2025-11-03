@@ -122,6 +122,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
 	float SurfaceSearchDistance;
 
+	/** Ratio of SurfaceSearchDistance to use for surface transition searches (0.0-1.0) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionSearchRatio;
+
+	/** Threshold for detecting different surfaces (0.0-1.0, lower = more sensitive to angle changes) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionAngleThreshold;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")

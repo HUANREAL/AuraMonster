@@ -72,6 +72,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling")
 	float SurfaceAlignmentSpeed;
 
+	/** Threshold for detecting surface normal changes (0.0-1.0, higher = more sensitive) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceChangeThreshold;
+
+	/** Offset distance from surface to position the monster when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling")
+	float SurfaceOffsetDistance;
+
 	/** Current surface normal the monster is attached to */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Crawling")
 	FVector CurrentSurfaceNormal;

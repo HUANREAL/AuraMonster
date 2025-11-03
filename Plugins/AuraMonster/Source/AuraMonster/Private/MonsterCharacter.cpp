@@ -19,6 +19,8 @@ AMonsterCharacter::AMonsterCharacter()
 	// Initialize crawling properties
 	SurfaceTraceDistance = 200.0f;
 	SurfaceAlignmentSpeed = 5.0f;
+	SurfaceChangeThreshold = 0.99f;
+	SurfaceOffsetDistance = 50.0f;
 	CurrentSurfaceNormal = FVector::UpVector;
 	bIsAttachedToSurface = false;
 }
@@ -139,7 +141,7 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 
 		// Check if surface normal has changed significantly
 		float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, NewSurfaceNormal);
-		if (DotProduct < 0.99f) // Approximately 8 degrees threshold
+		if (DotProduct < SurfaceChangeThreshold)
 		{
 			// Surface has changed, trigger transition event
 			OnSurfaceTransition(NewSurfaceNormal);

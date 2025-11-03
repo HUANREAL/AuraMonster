@@ -31,6 +31,8 @@ AMonsterAIController::AMonsterAIController()
 	MaxSurfaceTransitionInterval = 8.0f;
 	MaxSurfaceAngle = 90.0f;
 	SurfaceSearchDistance = 500.0f;
+	SurfaceTransitionSearchRatio = 0.5f;
+	SurfaceTransitionAngleThreshold = 0.9f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -415,7 +417,13 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 				if (SurfaceAngle <= MaxSurfaceAngle)
 				{
 					// Valid surface found - offset slightly from surface
-					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+					// Use monster's SurfaceOffsetDistance if available, otherwise use a default
+					float OffsetDistance = 50.0f;
+					if (ControlledMonster)
+					{
+						OffsetDistance = ControlledMonster->GetClass()->GetDefaultObject<AMonsterCharacter>()->SurfaceOffsetDistance;
+					}
+					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * OffsetDistance;
 					return true;
 				}
 			}
@@ -471,7 +479,7 @@ void AMonsterAIController::AttemptSurfaceTransition()
 	for (const FVector& SearchDir : SearchDirections)
 	{
 		FVector TraceStart = CurrentLocation;
-		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * 0.5f;
+		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * SurfaceTransitionSearchRatio;
 		
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;
@@ -491,10 +499,16 @@ void AMonsterAIController::AttemptSurfaceTransition()
 			float DotProduct = FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal);
 			
 			// If surface normal is significantly different, transition to it
-			if (FMath::Abs(DotProduct) < 0.9f) // More than ~25 degrees difference
+			if (FMath::Abs(DotProduct) < SurfaceTransitionAngleThreshold)
 			{
 				// Set new destination on the different surface
-				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+				// Use monster's SurfaceOffsetDistance if available, otherwise use a default
+				float OffsetDistance = 50.0f;
+				if (ControlledMonster)
+				{
+					OffsetDistance = ControlledMonster->GetClass()->GetDefaultObject<AMonsterCharacter>()->SurfaceOffsetDistance;
+				}
+				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * OffsetDistance;
 				bHasCrawlingDestination = true;
 				bIsStoppedAtDestination = false; // Cancel any current stop
 				return; // Successfully found and set transition destination
