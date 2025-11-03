@@ -356,7 +356,19 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Project movement direction onto the surface plane to ensure surface-relative movement
 		FVector DirectionToDestination = (CurrentCrawlingDestination - CurrentLocation).GetSafeNormal();
 		FVector SurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
-		FVector ProjectedDirection = FVector::VectorPlaneProject(DirectionToDestination, SurfaceNormal).GetSafeNormal();
+		FVector ProjectedDirection = FVector::VectorPlaneProject(DirectionToDestination, SurfaceNormal);
+		
+		// Check if projected direction is valid (not zero or near-zero)
+		// This can happen if destination is directly above/below current position
+		if (ProjectedDirection.SizeSquared() < 0.0001f)
+		{
+			// Projected direction is too small, find a new destination
+			bHasCrawlingDestination = false;
+			return;
+		}
+		
+		// Normalize the projected direction
+		ProjectedDirection.Normalize();
 		
 		// Apply movement input
 		if (ControlledMonster->GetCharacterMovement())
@@ -433,8 +445,20 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 				if (DotProduct >= CachedMaxSurfaceAngleCos)
 				{
 					// Valid surface found - offset slightly from surface using cached value
-					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
-					return true;
+					FVector PotentialDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
+					
+					// Validate that the destination will result in valid movement on the surface plane
+					// Check if the direction projected onto the surface plane is sufficient for movement
+					FVector DirectionToDestination = (PotentialDestination - CurrentLocation).GetSafeNormal();
+					FVector ProjectedDirection = FVector::VectorPlaneProject(DirectionToDestination, CurrentSurfaceNormal);
+					
+					// Only accept destination if projected direction is sufficiently large
+					// This prevents selecting destinations directly above/below current position
+					if (ProjectedDirection.SizeSquared() >= 0.01f)
+					{
+						OutDestination = PotentialDestination;
+						return true;
+					}
 				}
 			}
 		}
