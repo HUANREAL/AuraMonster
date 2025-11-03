@@ -81,3 +81,18 @@ void AMonsterCharacter::OnBehaviorStateChanged_Implementation(EMonsterBehaviorSt
 {
 	// Default implementation - can be overridden in Blueprint or subclasses
 }
+
+void AMonsterCharacter::OnNeckTwitch_Implementation()
+{
+	// Default implementation - can be overridden in Blueprint or subclasses to trigger neck twitch animation
+}
+
+void AMonsterCharacter::OnFingerShift_Implementation()
+{
+	// Default implementation - can be overridden in Blueprint or subclasses to trigger finger shift animation
+}
+
+void AMonsterCharacter::OnBreathingUpdate_Implementation(float BreathingIntensity)
+{
+	// Default implementation - can be overridden in Blueprint or subclasses to update breathing animation
+}

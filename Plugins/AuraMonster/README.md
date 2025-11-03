@@ -7,7 +7,12 @@ A comprehensive Unreal Engine 4 plugin for creating AI-controlled monsters with 
 ### Behavior States
 The plugin implements three distinct behavior states for monsters:
 
-1. **Idle** - Monster remains stationary and inactive
+1. **Idle** - Monster remains stationary with lifelike animations
+   - Subtle breathing cycles with smooth intensity variations
+   - Random subtle movements (neck twitches, finger shifts)
+   - Configurable idle duration before potentially transitioning to patrol
+   - Blueprint-implementable animation events
+   
 2. **Patrol (Standing)** - Monster patrols an area while standing/walking upright
 3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture
 
@@ -35,6 +40,9 @@ Base character class for monsters with:
 - `SetBehaviorState(EMonsterBehaviorState)` - Changes behavior state
 - `GetMovementSpeedForState(EMonsterBehaviorState)` - Returns movement speed for a given state
 - `OnBehaviorStateChanged(OldState, NewState)` - Event called when state changes (Blueprint implementable)
+- `OnNeckTwitch()` - Event called to trigger neck twitch animation (Blueprint implementable)
+- `OnFingerShift()` - Event called to trigger finger shift animation (Blueprint implementable)
+- `OnBreathingUpdate(BreathingIntensity)` - Event called each frame with breathing intensity 0.0-1.0 (Blueprint implementable)
 
 #### AMonsterAIController (AI Controller)
 AI controller that manages monster behavior:
@@ -51,6 +59,14 @@ AI controller that manages monster behavior:
 - `ExecutePatrolCrawlingBehavior(DeltaTime)` - Override to implement crawling patrol behavior
 - `OnEnterState(NewState)` - Event called when entering a state
 - `OnExitState(OldState)` - Event called when exiting a state
+
+**Idle Behavior Properties:**
+- `MinIdleDuration` (default: 5.0) - Minimum seconds to stay idle
+- `MaxIdleDuration` (default: 15.0) - Maximum seconds to stay idle
+- `MinSubtleMovementInterval` (default: 2.0) - Minimum seconds between subtle movements
+- `MaxSubtleMovementInterval` (default: 6.0) - Maximum seconds between subtle movements
+- `BreathingCycleDuration` (default: 4.0) - Duration of one breathing cycle in seconds
+- `PatrolTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to patrol after idle duration
 
 ## Installation
 
@@ -104,17 +120,29 @@ class AMyMonsterAI : public AMonsterAIController
 
 2. **Create AI Controller Blueprint:**
    - Create a new Blueprint class based on `MonsterAIController`
+   - Configure idle behavior properties in the Details panel:
+     - `Min/Max Idle Duration` - How long to stay idle
+     - `Min/Max Subtle Movement Interval` - Frequency of twitches/shifts
+     - `Breathing Cycle Duration` - Speed of breathing animation
+     - `Patrol Transition Chance` - Likelihood of starting patrol
    - Override behavior functions:
      - `Execute Idle Behavior`
      - `Execute Patrol Standing Behavior`
      - `Execute Patrol Crawling Behavior`
    - Implement your AI logic (waypoint navigation, detection, etc.)
 
-3. **Assign AI Controller:**
+3. **Implement Idle Animations in Monster Blueprint:**
+   - Override these events in your Monster Blueprint:
+     - `On Neck Twitch` - Play neck twitch animation montage
+     - `On Finger Shift` - Play finger/hand shift animation montage
+     - `On Breathing Update` - Use breathing intensity to drive skeletal mesh blend or morph target
+   - Example: In `On Breathing Update`, multiply BreathingIntensity by a scale factor and apply to chest bone scale
+
+4. **Assign AI Controller:**
    - In your Monster Blueprint, set "AI Controller Class" to your custom AI controller
    - Or set "Auto Possess AI" to "PlacedInWorldOrSpawned"
 
-4. **Change States in Blueprint:**
+5. **Change States in Blueprint:**
    ```
    Call "Transition To State" on AI Controller
    Or "Set Behavior State" on Monster Character

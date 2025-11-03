@@ -9,6 +9,21 @@ AMonsterAIController::AMonsterAIController()
 	PrimaryActorTick.bCanEverTick = true;
 	CurrentState = EMonsterBehaviorState::Idle;
 	ControlledMonster = nullptr;
+
+	// Initialize idle behavior parameters with reasonable defaults
+	MinIdleDuration = 5.0f;
+	MaxIdleDuration = 15.0f;
+	MinSubtleMovementInterval = 2.0f;
+	MaxSubtleMovementInterval = 6.0f;
+	BreathingCycleDuration = 4.0f;
+	PatrolTransitionChance = 0.3f;
+
+	// Initialize timing variables
+	CurrentIdleTime = 0.0f;
+	TargetIdleDuration = 0.0f;
+	TimeSinceLastSubtleMovement = 0.0f;
+	NextSubtleMovementTime = 0.0f;
+	BreathingCycleTime = 0.0f;
 }
 
 void AMonsterAIController::BeginPlay()
@@ -69,8 +84,67 @@ void AMonsterAIController::TransitionToState(EMonsterBehaviorState NewState)
 
 void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 {
-	// Default idle behavior - do nothing
-	// This can be overridden in Blueprint or subclasses
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Update idle time
+	CurrentIdleTime += DeltaTime;
+
+	// Update breathing cycle
+	BreathingCycleTime += DeltaTime;
+	if (BreathingCycleTime >= BreathingCycleDuration)
+	{
+		BreathingCycleTime = 0.0f;
+	}
+
+	// Calculate breathing intensity (sine wave for smooth breathing)
+	float BreathingIntensity = (FMath::Sin((BreathingCycleTime / BreathingCycleDuration) * 2.0f * PI) + 1.0f) * 0.5f;
+	ControlledMonster->OnBreathingUpdate(BreathingIntensity);
+
+	// Handle subtle random movements
+	TimeSinceLastSubtleMovement += DeltaTime;
+	if (TimeSinceLastSubtleMovement >= NextSubtleMovementTime)
+	{
+		// Trigger a random subtle movement
+		float RandomValue = FMath::FRand();
+		if (RandomValue < 0.5f)
+		{
+			// Neck twitch
+			ControlledMonster->OnNeckTwitch();
+		}
+		else
+		{
+			// Finger shift
+			ControlledMonster->OnFingerShift();
+		}
+
+		// Reset timer and set next movement time
+		TimeSinceLastSubtleMovement = 0.0f;
+		NextSubtleMovementTime = FMath::RandRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+	}
+
+	// Check if should transition to patrol
+	if (CurrentIdleTime >= TargetIdleDuration)
+	{
+		// Decide whether to patrol or stay idle
+		float RandomValue = FMath::FRand();
+		if (RandomValue < PatrolTransitionChance)
+		{
+			// Randomly choose between standing and crawling patrol
+			EMonsterBehaviorState NewState = (FMath::FRand() < 0.5f) 
+				? EMonsterBehaviorState::PatrolStanding 
+				: EMonsterBehaviorState::PatrolCrawling;
+			TransitionToState(NewState);
+		}
+		else
+		{
+			// Stay idle but reset the idle duration
+			CurrentIdleTime = 0.0f;
+			TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
+		}
+	}
 }
 
 void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
@@ -89,8 +163,20 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
 {
-	// Called when entering a new state
-	// Can be overridden to set up state-specific logic
+	// Initialize state-specific variables when entering a state
+	if (NewState == EMonsterBehaviorState::Idle)
+	{
+		// Reset idle timing
+		CurrentIdleTime = 0.0f;
+		TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
+		
+		// Reset subtle movement timing
+		TimeSinceLastSubtleMovement = 0.0f;
+		NextSubtleMovementTime = FMath::RandRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		
+		// Reset breathing cycle
+		BreathingCycleTime = 0.0f;
+	}
 }
 
 void AMonsterAIController::OnExitState_Implementation(EMonsterBehaviorState OldState)

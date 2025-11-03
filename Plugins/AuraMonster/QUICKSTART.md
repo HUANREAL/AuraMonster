@@ -51,7 +51,51 @@
      → If Idle: Stop movement
    ```
 
-### 3. State Transitions
+### 3. Implementing Idle Animations
+
+**Step 1: Configure Idle Behavior in BP_MyMonsterAI**
+1. Open "BP_MyMonsterAI"
+2. In Details panel, find "Monster AI | Idle" section:
+   - `Min Idle Duration`: 5.0 (minimum seconds to stay idle)
+   - `Max Idle Duration`: 15.0 (maximum seconds to stay idle)
+   - `Min Subtle Movement Interval`: 2.0 (min seconds between twitches)
+   - `Max Subtle Movement Interval`: 6.0 (max seconds between twitches)
+   - `Breathing Cycle Duration`: 4.0 (one breath cycle in seconds)
+   - `Patrol Transition Chance`: 0.3 (30% chance to patrol after idle)
+
+**Step 2: Implement Animation Events in BP_MyMonster**
+
+**Override "On Neck Twitch":**
+```
+Event On Neck Twitch
+→ Play Animation Montage (select your neck twitch montage)
+```
+
+**Override "On Finger Shift":**
+```
+Event On Finger Shift
+→ Play Animation Montage (select your finger shift montage)
+```
+
+**Override "On Breathing Update":**
+```
+Event On Breathing Update (BreathingIntensity input)
+→ Get Mesh Component
+→ Set Morph Target (e.g., "Chest_Expand", multiply BreathingIntensity by scale)
+OR
+→ Get Bone Transform (e.g., "Chest" bone)
+→ Add Relative Scale (scale based on BreathingIntensity)
+```
+
+**Example Breathing Implementation:**
+```
+On Breathing Update
+→ BreathingIntensity * 0.1 (scale down the intensity)
+→ Make Vector (X=1.0 + result, Y=1.0 + result, Z=1.0 + result)
+→ Set Relative Scale 3D (Chest bone, computed vector)
+```
+
+### 4. State Transitions
 
 **From Blueprint (anywhere with reference to Monster or AI):**
 
@@ -69,7 +113,7 @@ if (AIController)
 }
 ```
 
-### 4. Example: Simple Waypoint Patrol
+### 5. Example: Simple Waypoint Patrol
 
 **In BP_MyMonsterAI:**
 
@@ -89,7 +133,7 @@ if (AIController)
      → Continue moving
 ```
 
-### 5. Example: Detection and State Change
+### 6. Example: Detection and State Change
 
 **In BP_MyMonsterAI (or BP_MyMonster):**
 
@@ -103,7 +147,7 @@ if (AIController)
    → Transition To State: Idle or PatrolCrawling
 ```
 
-### 6. Animation Integration
+### 7. Animation Integration
 
 **In Monster Animation Blueprint:**
 
@@ -126,7 +170,7 @@ State Machine:
   - PatrolCrawling → Idle (when BehaviorState == Idle)
 ```
 
-### 7. C++ Extension Example
+### 8. C++ Extension Example
 
 ```cpp
 // Custom Monster Class
