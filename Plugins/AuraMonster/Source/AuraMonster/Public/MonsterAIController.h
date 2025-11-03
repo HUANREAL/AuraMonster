@@ -8,6 +8,8 @@
 #include "MonsterAIController.generated.h"
 
 class AMonsterCharacter;
+class UNavigationSystemV1;
+class UPathFollowingComponent;
 
 /**
  * AI Controller for managing monster behavior and state transitions

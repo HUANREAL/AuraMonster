@@ -4,7 +4,6 @@
 #include "MonsterCharacter.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
-#include "NavigationPath.h"
 
 AMonsterAIController::AMonsterAIController()
 {
