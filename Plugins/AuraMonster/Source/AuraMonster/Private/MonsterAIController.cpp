@@ -89,12 +89,6 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		return;
 	}
 
-	// Validate breathing cycle duration to avoid division by zero
-	if (BreathingCycleDuration <= 0.0f)
-	{
-		BreathingCycleDuration = 4.0f;
-	}
-
 	// Update idle time
 	CurrentIdleTime += DeltaTime;
 
@@ -103,6 +97,7 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 	BreathingCycleTime = FMath::Fmod(BreathingCycleTime, BreathingCycleDuration);
 
 	// Calculate breathing intensity (sine wave for smooth breathing)
+	// Multiply by 2*PI to convert normalized time (0-1) to radians for full sine wave cycle
 	const float NormalizedTime = BreathingCycleTime / BreathingCycleDuration;
 	float BreathingIntensity = (FMath::Sin(NormalizedTime * 2.0f * UE_PI) + 1.0f) * 0.5f;
 	ControlledMonster->OnBreathingUpdate(BreathingIntensity);
@@ -174,6 +169,12 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 	// Initialize state-specific variables when entering a state
 	if (NewState == EMonsterBehaviorState::Idle)
 	{
+		// Validate breathing cycle duration to avoid division by zero
+		if (BreathingCycleDuration <= 0.0f)
+		{
+			BreathingCycleDuration = 4.0f;
+		}
+		
 		// Reset idle timing
 		CurrentIdleTime = 0.0f;
 		

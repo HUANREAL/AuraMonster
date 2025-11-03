@@ -90,7 +90,7 @@ OR
 **Example Breathing Implementation:**
 ```
 On Breathing Update
-→ BreathingIntensity * 0.1 (scale down the intensity)
+→ BreathingIntensity * 0.1 // 0.1 is a recommended starting scale factor; adjust as needed for your skeletal mesh
 → Make Vector (X=1.0 + result, Y=1.0 + result, Z=1.0 + result)
 → Set Relative Scale 3D (Chest bone, computed vector)
 ```
