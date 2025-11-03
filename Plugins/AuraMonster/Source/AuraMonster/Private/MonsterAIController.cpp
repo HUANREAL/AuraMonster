@@ -322,8 +322,8 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		}
 	}
 
-	// Attempt unpredictable surface transition mid-patrol
-	if (TimeSinceSurfaceTransitionCheck >= NextSurfaceTransitionCheckTime)
+	// Attempt unpredictable surface transition mid-patrol (but not while stopped)
+	if (!bIsStoppedAtDestination && TimeSinceSurfaceTransitionCheck >= NextSurfaceTransitionCheckTime)
 	{
 		AttemptSurfaceTransition();
 		TimeSinceSurfaceTransitionCheck = 0.0f;
@@ -530,6 +530,7 @@ void AMonsterAIController::AttemptSurfaceTransition()
 				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
 				bHasCrawlingDestination = true;
 				bIsStoppedAtDestination = false; // Cancel any current stop
+				CurrentStopTime = 0.0f; // Reset stop timer for clean state
 				return; // Successfully found and set transition destination
 			}
 		}

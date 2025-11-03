@@ -146,8 +146,10 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		{
 			// Surface has changed, trigger transition event
 			OnSurfaceTransition(NewSurfaceNormal);
-			CurrentSurfaceNormal = NewSurfaceNormal;
 		}
+		
+		// Always update current surface normal to match detected surface
+		CurrentSurfaceNormal = NewSurfaceNormal;
 
 		// Smoothly rotate to align with surface normal
 		FRotator CurrentRotation = GetActorRotation();
