@@ -29,7 +29,7 @@
 
 **Note:** Patrol (Standing) behavior is already implemented with default logic:
 - Selects random reachable destinations within patrol range
-- Uses UE4's navigation system for pathfinding
+- Uses Unreal Engine's navigation system for pathfinding
 - Stops at destinations to listen/look around
 
 You can customize the patrol behavior by configuring properties in the AI Controller:

@@ -218,9 +218,20 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 			return;
 		}
 		
+		// Check current path following status
+		EPathFollowingStatus::Type Status = CachedPathFollowingComp->GetStatus();
+		
 		// Still moving to current destination, continue
-		if (CachedPathFollowingComp->GetStatus() == EPathFollowingStatus::Moving)
+		if (Status == EPathFollowingStatus::Moving)
 		{
+			return;
+		}
+		
+		// If the status is not Idle or Ready to move, do not select a new destination
+		// This prevents rapid destination changes during transient states
+		if (Status != EPathFollowingStatus::Idle)
+		{
+			// For Paused, Waiting, Aborting, etc. - wait for status to settle
 			return;
 		}
 	}

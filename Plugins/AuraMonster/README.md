@@ -15,7 +15,7 @@ The plugin implements three distinct behavior states for monsters:
    
 2. **Patrol (Standing)** - Monster patrols an area while standing/walking upright
    - Walks with deliberate, heavy pace (configurable via PatrolStandingSpeed)
-   - Follows the floor using UE4's navigation system
+   - Follows the floor using Unreal Engine's navigation system
    - Selects random reachable destinations within a defined range
    - Walks toward destinations with occasional stops to listen or look around
    - Configurable patrol range, stop duration, and acceptance radius
@@ -165,7 +165,7 @@ class AMyMonsterAI : public AMonsterAIController
 
 The patrol standing behavior is already implemented by default with the following features:
 - Selects random reachable destinations within `PatrolRange`
-- Uses UE4's navigation system to follow the floor
+- Uses Unreal Engine's navigation system to follow the floor
 - Walks with deliberate, heavy pace (configured via `PatrolStandingSpeed`)
 - Stops at each destination for a random duration between `MinStopDuration` and `MaxStopDuration` to listen/look around
 
