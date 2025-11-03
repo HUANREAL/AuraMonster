@@ -313,7 +313,6 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			// Done stopping, ready to move to next destination
 			bIsStoppedAtDestination = false;
 			CurrentStopTime = 0.0f;
-			bHasCrawlingDestination = false; // Force new destination selection
 		}
 		else
 		{
@@ -431,7 +430,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 				{
 					// Valid surface found - offset slightly from surface using cached value
 					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
-					return true; // Early exit when valid destination found
+					return true;
 				}
 			}
 		}
@@ -514,9 +513,9 @@ void AMonsterAIController::AttemptSurfaceTransition()
 				// Set new destination on the different surface using cached offset value
 				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
 				bHasCrawlingDestination = true;
-				bIsStoppedAtDestination = false; // Cancel any current stop
-				CurrentStopTime = 0.0f; // Reset stop timer for clean state
-				return; // Successfully found and set transition destination
+				bIsStoppedAtDestination = false;
+				CurrentStopTime = 0.0f;
+				return;
 			}
 		}
 	}

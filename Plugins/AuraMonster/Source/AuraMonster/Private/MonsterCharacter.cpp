@@ -164,11 +164,11 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		}
 		else
 		{
-			// Fallback: use any vector perpendicular to the normal
-			ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, FVector::RightVector);
+			// Fallback: use any vector perpendicular to the normal using actor-relative vectors
+			ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, GetActorRightVector());
 			if (ProjectedForward.IsNearlyZero())
 			{
-				ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, FVector::ForwardVector);
+				ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, GetActorForwardVector());
 			}
 			
 			// Final fallback: if still nearly zero, use a guaranteed perpendicular vector
@@ -177,11 +177,11 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 				// If surface normal is nearly vertical (up/down), use right vector; otherwise use up vector
 				if (FMath::Abs(NewSurfaceNormal.Z) > 0.99f)
 				{
-					ProjectedForward = FVector::RightVector;
+					ProjectedForward = GetActorRightVector();
 				}
 				else
 				{
-					ProjectedForward = FVector::UpVector;
+					ProjectedForward = GetActorUpVector();
 				}
 			}
 			
