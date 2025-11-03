@@ -49,7 +49,7 @@ Base character class for monsters with:
 - `PatrolCrawlingSpeed` (default: 150.0) - Movement speed when patrolling while crawling
 - `SurfaceTraceDistance` (default: 200.0) - Maximum distance to trace for surface detection when crawling
 - `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with surface normal
-- `SurfaceChangeThreshold` (default: 0.99) - Threshold for detecting surface normal changes (0.0-1.0, higher = more sensitive)
+- `SurfaceChangeThreshold` (default: 0.99) - Dot product threshold for detecting surface normal changes; lower values make the monster more sensitive to surface changes (0.0-1.0)
 - `SurfaceOffsetDistance` (default: 50.0) - Offset distance from surface to position the monster when crawling
 - `CurrentSurfaceNormal` - Current surface normal the monster is attached to (read-only)
 - `bIsAttachedToSurface` - Whether the monster is currently attached to a surface (read-only)
@@ -106,7 +106,7 @@ AI controller that manages monster behavior:
 - `SurfaceSearchDistance` (default: 500.0) - Distance to search for adjacent surfaces when crawling
 - `MaxSurfaceSearchAttempts` (default: 8) - Maximum number of random attempts to find a valid crawling surface destination
 - `SurfaceTransitionSearchRatio` (default: 0.5) - Ratio of SurfaceSearchDistance to use for surface transition searches (0.0-1.0)
-- `SurfaceTransitionAngleThreshold` (default: 0.9) - Threshold for detecting different surfaces (0.0-1.0, lower = more sensitive to angle changes)
+- `SurfaceTransitionAngleThreshold` (default: 0.9) - Dot product threshold for detecting different surfaces; lower values make the monster more sensitive to surface angle changes (0.0-1.0)
 
 ## Installation
 

@@ -76,7 +76,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling")
 	float SurfaceAlignmentSpeed;
 
-	/** Threshold for detecting surface normal changes (0.0-1.0, higher = more sensitive) */
+	/** Threshold for detecting surface normal changes (0.0-1.0, lower = more sensitive to surface changes) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SurfaceChangeThreshold;
 
