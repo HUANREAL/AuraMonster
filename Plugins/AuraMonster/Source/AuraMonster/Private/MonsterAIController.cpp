@@ -3,6 +3,8 @@
 #include "MonsterAIController.h"
 #include "MonsterCharacter.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
 
 AMonsterAIController::AMonsterAIController()
 {
@@ -18,12 +20,23 @@ AMonsterAIController::AMonsterAIController()
 	BreathingCycleDuration = 4.0f;
 	PatrolTransitionChance = 0.3f;
 
+	// Initialize patrol behavior parameters with reasonable defaults
+	PatrolRange = 1000.0f;
+	MinStopDuration = 2.0f;
+	MaxStopDuration = 5.0f;
+	PatrolAcceptanceRadius = 100.0f;
+
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
 	TimeSinceLastSubtleMovement = 0.0f;
 	NextSubtleMovementTime = 0.0f;
 	BreathingCycleTime = 0.0f;
+	
+	// Initialize patrol variables
+	CurrentStopTime = 0.0f;
+	TargetStopDuration = 0.0f;
+	bIsStoppedAtDestination = false;
 }
 
 void AMonsterAIController::BeginPlay()
@@ -154,9 +167,70 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 
 void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
 {
-	// Default patrol standing behavior
-	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
-	// For example: move to patrol points, look around, etc.
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Check if we're currently stopped at a destination to listen/look around
+	if (bIsStoppedAtDestination)
+	{
+		CurrentStopTime += DeltaTime;
+		
+		// Check if we've waited long enough
+		if (CurrentStopTime >= TargetStopDuration)
+		{
+			// Done stopping, ready to move to next destination
+			bIsStoppedAtDestination = false;
+			CurrentStopTime = 0.0f;
+		}
+		else
+		{
+			// Still waiting, don't move yet
+			return;
+		}
+	}
+
+	// Check if we have reached the current destination or don't have one
+	if (GetPathFollowingComponent() && GetPathFollowingComponent()->DidMoveReachGoal())
+	{
+		// We've reached destination, now stop to listen/look around
+		bIsStoppedAtDestination = true;
+		CurrentStopTime = 0.0f;
+		TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+		
+		// Stop movement
+		StopMovement();
+		return;
+	}
+	
+	// Check if we're currently moving to a destination
+	if (GetPathFollowingComponent() && !GetPathFollowingComponent()->HasReached())
+	{
+		// Still moving to current destination, continue
+		return;
+	}
+
+	// Need to select a new random patrol destination
+	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetNavigationSystem(GetWorld());
+	if (!NavSys)
+	{
+		return;
+	}
+
+	// Get current location
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	
+	// Try to find a random reachable point within patrol range
+	FNavLocation ResultLocation;
+	bool bFoundLocation = NavSys->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
+	
+	if (bFoundLocation)
+	{
+		// Move to the new patrol destination with deliberate, heavy pace
+		// The movement speed is already set via PatrolStandingSpeed in the character
+		MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+	}
 }
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
@@ -191,6 +265,13 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		
 		// Reset breathing cycle
 		BreathingCycleTime = 0.0f;
+	}
+	else if (NewState == EMonsterBehaviorState::PatrolStanding || NewState == EMonsterBehaviorState::PatrolCrawling)
+	{
+		// Reset patrol timing variables
+		CurrentStopTime = 0.0f;
+		TargetStopDuration = 0.0f;
+		bIsStoppedAtDestination = false;
 	}
 }
 
