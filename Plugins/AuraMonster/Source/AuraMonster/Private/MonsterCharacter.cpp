@@ -150,7 +150,9 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 
 		// Smoothly rotate to align with surface normal
 		FRotator CurrentRotation = GetActorRotation();
-		FRotator TargetRotation = NewSurfaceNormal.Rotation();
+		
+		// Convert surface normal to rotation properly
+		FRotator TargetRotation = FRotationMatrix::MakeFromZ(NewSurfaceNormal).Rotator();
 		
 		// Adjust pitch and roll to align with surface, preserve yaw for movement direction
 		TargetRotation.Yaw = CurrentRotation.Yaw;

@@ -51,6 +51,7 @@ AMonsterAIController::AMonsterAIController()
 	NextSurfaceTransitionCheckTime = 0.0f;
 	CurrentCrawlingDestination = FVector::ZeroVector;
 	bHasCrawlingDestination = false;
+	CachedSurfaceOffsetDistance = 50.0f;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -69,6 +70,12 @@ void AMonsterAIController::BeginPlay()
 	
 	// Cache path following component reference
 	CachedPathFollowingComp = GetPathFollowingComponent();
+	
+	// Cache surface offset distance from controlled monster for performance
+	if (ControlledMonster)
+	{
+		CachedSurfaceOffsetDistance = ControlledMonster->SurfaceOffsetDistance;
+	}
 	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
@@ -412,18 +419,14 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 			if (bHit)
 			{
 				// Check if the surface angle is within acceptable range
-				float SurfaceAngle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector)));
+				// Clamp dot product to prevent NaN from floating-point precision errors
+				float DotProduct = FMath::Clamp(FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector), -1.0f, 1.0f);
+				float SurfaceAngle = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
 				
 				if (SurfaceAngle <= MaxSurfaceAngle)
 				{
-					// Valid surface found - offset slightly from surface
-					// Use monster's SurfaceOffsetDistance if available, otherwise use a default
-					float OffsetDistance = 50.0f;
-					if (ControlledMonster)
-					{
-						OffsetDistance = ControlledMonster->GetClass()->GetDefaultObject<AMonsterCharacter>()->SurfaceOffsetDistance;
-					}
-					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * OffsetDistance;
+					// Valid surface found - offset slightly from surface using cached value
+					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
 					return true;
 				}
 			}
@@ -501,14 +504,8 @@ void AMonsterAIController::AttemptSurfaceTransition()
 			// If surface normal is significantly different, transition to it
 			if (FMath::Abs(DotProduct) < SurfaceTransitionAngleThreshold)
 			{
-				// Set new destination on the different surface
-				// Use monster's SurfaceOffsetDistance if available, otherwise use a default
-				float OffsetDistance = 50.0f;
-				if (ControlledMonster)
-				{
-					OffsetDistance = ControlledMonster->GetClass()->GetDefaultObject<AMonsterCharacter>()->SurfaceOffsetDistance;
-				}
-				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * OffsetDistance;
+				// Set new destination on the different surface using cached offset value
+				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
 				bHasCrawlingDestination = true;
 				bIsStoppedAtDestination = false; // Cancel any current stop
 				return; // Successfully found and set transition destination
@@ -556,6 +553,12 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 			TimeSinceSurfaceTransitionCheck = 0.0f;
 			NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
 			bHasCrawlingDestination = false;
+			
+			// Refresh cached surface offset distance
+			if (ControlledMonster)
+			{
+				CachedSurfaceOffsetDistance = ControlledMonster->SurfaceOffsetDistance;
+			}
 		}
 	}
 }

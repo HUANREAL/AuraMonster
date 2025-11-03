@@ -183,6 +183,9 @@ private:
 	/** Whether a valid crawling destination has been set */
 	bool bHasCrawlingDestination;
 
+	/** Cached surface offset distance from the controlled monster */
+	float CachedSurfaceOffsetDistance;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 
