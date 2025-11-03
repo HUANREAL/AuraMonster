@@ -133,6 +133,14 @@ private:
 	/** Whether the monster is currently stopped and listening/looking around */
 	bool bIsStoppedAtDestination;
 
+	/** Cached reference to navigation system */
+	UPROPERTY()
+	UNavigationSystemV1* CachedNavSystem;
+
+	/** Cached reference to path following component */
+	UPROPERTY()
+	UPathFollowingComponent* CachedPathFollowingComp;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 };

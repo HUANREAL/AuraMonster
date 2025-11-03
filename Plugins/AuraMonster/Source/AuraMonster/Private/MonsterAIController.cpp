@@ -37,6 +37,10 @@ AMonsterAIController::AMonsterAIController()
 	CurrentStopTime = 0.0f;
 	TargetStopDuration = 0.0f;
 	bIsStoppedAtDestination = false;
+	
+	// Initialize cached references
+	CachedNavSystem = nullptr;
+	CachedPathFollowingComp = nullptr;
 }
 
 void AMonsterAIController::BeginPlay()
@@ -45,6 +49,12 @@ void AMonsterAIController::BeginPlay()
 
 	// Cache reference to the controlled monster
 	ControlledMonster = Cast<AMonsterCharacter>(GetPawn());
+	
+	// Cache navigation system reference
+	CachedNavSystem = UNavigationSystemV1::GetNavigationSystem(GetWorld());
+	
+	// Cache path following component reference
+	CachedPathFollowingComp = GetPathFollowingComponent();
 	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
@@ -192,12 +202,11 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		}
 	}
 
-	// Check if we're currently moving to a destination
-	UPathFollowingComponent* PathFollowingComp = GetPathFollowingComponent();
-	if (PathFollowingComp)
+	// Check if we're currently moving to a destination using cached component
+	if (CachedPathFollowingComp)
 	{
 		// Check if we've reached the current destination
-		if (PathFollowingComp->DidMoveReachGoal())
+		if (CachedPathFollowingComp->DidMoveReachGoal())
 		{
 			// We've reached destination, now stop to listen/look around
 			bIsStoppedAtDestination = true;
@@ -210,15 +219,14 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		}
 		
 		// Still moving to current destination, continue
-		if (PathFollowingComp->GetStatus() == EPathFollowingStatus::Moving)
+		if (CachedPathFollowingComp->GetStatus() == EPathFollowingStatus::Moving)
 		{
 			return;
 		}
 	}
 
-	// Need to select a new random patrol destination
-	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetNavigationSystem(GetWorld());
-	if (!NavSys)
+	// Need to select a new random patrol destination using cached navigation system
+	if (!CachedNavSystem)
 	{
 		return;
 	}
@@ -228,7 +236,7 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	
 	// Try to find a random reachable point within patrol range
 	FNavLocation ResultLocation;
-	bool bFoundLocation = NavSys->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
+	bool bFoundLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
 	
 	if (bFoundLocation)
 	{
