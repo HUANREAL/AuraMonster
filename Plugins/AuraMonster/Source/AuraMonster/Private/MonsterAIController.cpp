@@ -383,14 +383,14 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	
-	// Pre-calculated trace directions to avoid repeated allocations
-	static const FVector TraceDirections[] = {
-		FVector::DownVector,
-		FVector::ForwardVector,
-		FVector::UpVector,
-		FVector::RightVector,
-		-FVector::RightVector,  // Left direction
-		-FVector::ForwardVector // Backward direction
+	// Compute trace directions relative to the monster's orientation for proper surface-aware pathfinding
+	const FVector TraceDirections[] = {
+		-ControlledMonster->GetActorUpVector(),    // Down relative to monster
+		ControlledMonster->GetActorForwardVector(), // Forward
+		ControlledMonster->GetActorUpVector(),      // Up relative to monster
+		ControlledMonster->GetActorRightVector(),   // Right
+		-ControlledMonster->GetActorRightVector(),  // Left
+		-ControlledMonster->GetActorForwardVector() // Backward
 	};
 	
 	// Try multiple random directions to find a valid surface location
@@ -399,8 +399,23 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 		// Generate a random direction
 		FVector RandomDirection = FMath::VRand();
 		
-		// Scale by search distance
-		FVector SearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
+		// Generate raw search location
+		FVector RawSearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
+		
+		// Validate the search location using navigation system
+		FNavLocation ProjectedLocation;
+		bool bIsNavValid = false;
+		if (CachedNavSystem)
+		{
+			bIsNavValid = CachedNavSystem->ProjectPointToNavigation(
+				RawSearchLocation,
+				ProjectedLocation,
+				FVector(100.f, 100.f, 200.f) // Extent for projection tolerance
+			);
+		}
+		
+		// Use projected location if valid, otherwise use raw location
+		FVector SearchLocation = bIsNavValid ? ProjectedLocation.Location : RawSearchLocation;
 		
 		// Trace to find surfaces in multiple directions
 		for (const FVector& TraceDir : TraceDirections)
@@ -431,7 +446,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 				{
 					// Valid surface found - offset slightly from surface using cached value
 					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
-					return true;
+					return true; // Early exit when valid destination found
 				}
 			}
 		}
