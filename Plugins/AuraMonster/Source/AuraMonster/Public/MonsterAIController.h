@@ -107,4 +107,7 @@ private:
 
 	/** Current time in breathing cycle */
 	float BreathingCycleTime;
+
+	/** Helper function to get a random value within a validated range */
+	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 };

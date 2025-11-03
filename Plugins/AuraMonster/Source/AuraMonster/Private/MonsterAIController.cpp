@@ -20,7 +20,7 @@ AMonsterAIController::AMonsterAIController()
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
-	TargetIdleDuration = 0.0f;
+	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
 	TimeSinceLastSubtleMovement = 0.0f;
 	NextSubtleMovementTime = 0.0f;
 	BreathingCycleTime = 0.0f;
@@ -124,9 +124,7 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 
 		// Reset timer and set next movement time
 		TimeSinceLastSubtleMovement = 0.0f;
-		float SubtleMin = FMath::Min(MinSubtleMovementInterval, MaxSubtleMovementInterval);
-		float SubtleMax = FMath::Max(MinSubtleMovementInterval, MaxSubtleMovementInterval);
-		NextSubtleMovementTime = FMath::RandRange(SubtleMin, SubtleMax);
+		NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
 	}
 
 	// Check if should transition to patrol
@@ -146,9 +144,7 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		{
 			// Stay idle but reset the idle duration
 			CurrentIdleTime = 0.0f;
-			float IdleMin = FMath::Min(MinIdleDuration, MaxIdleDuration);
-			float IdleMax = FMath::Max(MinIdleDuration, MaxIdleDuration);
-			TargetIdleDuration = FMath::RandRange(IdleMin, IdleMax);
+			TargetIdleDuration = GetValidatedRandomRange(MinIdleDuration, MaxIdleDuration);
 		}
 	}
 }
@@ -182,17 +178,13 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentIdleTime = 0.0f;
 		
 		// Validate idle duration range
-		float IdleMin = FMath::Min(MinIdleDuration, MaxIdleDuration);
-		float IdleMax = FMath::Max(MinIdleDuration, MaxIdleDuration);
-		TargetIdleDuration = FMath::RandRange(IdleMin, IdleMax);
+		TargetIdleDuration = GetValidatedRandomRange(MinIdleDuration, MaxIdleDuration);
 		
 		// Reset subtle movement timing
 		TimeSinceLastSubtleMovement = 0.0f;
 		
 		// Validate subtle movement interval range
-		float SubtleMin = FMath::Min(MinSubtleMovementInterval, MaxSubtleMovementInterval);
-		float SubtleMax = FMath::Max(MinSubtleMovementInterval, MaxSubtleMovementInterval);
-		NextSubtleMovementTime = FMath::RandRange(SubtleMin, SubtleMax);
+		NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
 		
 		// Reset breathing cycle
 		BreathingCycleTime = 0.0f;
@@ -203,4 +195,12 @@ void AMonsterAIController::OnExitState_Implementation(EMonsterBehaviorState OldS
 {
 	// Called when exiting a state
 	// Can be overridden to clean up state-specific logic
+}
+
+float AMonsterAIController::GetValidatedRandomRange(float MinValue, float MaxValue) const
+{
+	// Ensure MinValue <= MaxValue by using FMath::Min/Max
+	float ValidMin = FMath::Min(MinValue, MaxValue);
+	float ValidMax = FMath::Max(MinValue, MaxValue);
+	return FMath::RandRange(ValidMin, ValidMax);
 }
