@@ -33,6 +33,9 @@ void AMonsterAIController::BeginPlay()
 	// Cache reference to the controlled monster
 	ControlledMonster = Cast<AMonsterCharacter>(GetPawn());
 	
+	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
+	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+	
 	// Initialize with idle state
 	if (ControlledMonster)
 	{
