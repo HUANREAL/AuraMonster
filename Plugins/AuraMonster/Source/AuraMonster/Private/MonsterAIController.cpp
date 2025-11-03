@@ -241,8 +241,19 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	if (bFoundLocation)
 	{
 		// Move to the new patrol destination with deliberate, heavy pace
-		// The movement speed is already set via PatrolStandingSpeed in the character
+		// The movement speed is configured via PatrolStandingSpeed property in AMonsterCharacter
 		MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+	}
+	else
+	{
+		// Failed to find a reachable location, try again with a smaller radius
+		bool bFoundCloserLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange * 0.5f, ResultLocation);
+		if (bFoundCloserLocation)
+		{
+			MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+		}
+		// If still can't find a location, the monster will try again on the next tick
+		// This prevents getting stuck while allowing for environmental constraints
 	}
 }
 
