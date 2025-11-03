@@ -18,12 +18,6 @@ AMonsterAIController::AMonsterAIController()
 	BreathingCycleDuration = 4.0f;
 	PatrolTransitionChance = 0.3f;
 
-	// Ensure breathing cycle duration is valid (avoid division by zero)
-	if (BreathingCycleDuration <= 0.0f)
-	{
-		BreathingCycleDuration = 4.0f;
-	}
-
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = 0.0f;
@@ -132,7 +126,9 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 
 		// Reset timer and set next movement time
 		TimeSinceLastSubtleMovement = 0.0f;
-		NextSubtleMovementTime = FMath::RandRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		float SubtleMin = FMath::Min(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		float SubtleMax = FMath::Max(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		NextSubtleMovementTime = FMath::RandRange(SubtleMin, SubtleMax);
 	}
 
 	// Check if should transition to patrol
@@ -152,7 +148,9 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		{
 			// Stay idle but reset the idle duration
 			CurrentIdleTime = 0.0f;
-			TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
+			float IdleMin = FMath::Min(MinIdleDuration, MaxIdleDuration);
+			float IdleMax = FMath::Max(MinIdleDuration, MaxIdleDuration);
+			TargetIdleDuration = FMath::RandRange(IdleMin, IdleMax);
 		}
 	}
 }
@@ -178,11 +176,19 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 	{
 		// Reset idle timing
 		CurrentIdleTime = 0.0f;
-		TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
+		
+		// Validate idle duration range
+		float IdleMin = FMath::Min(MinIdleDuration, MaxIdleDuration);
+		float IdleMax = FMath::Max(MinIdleDuration, MaxIdleDuration);
+		TargetIdleDuration = FMath::RandRange(IdleMin, IdleMax);
 		
 		// Reset subtle movement timing
 		TimeSinceLastSubtleMovement = 0.0f;
-		NextSubtleMovementTime = FMath::RandRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		
+		// Validate subtle movement interval range
+		float SubtleMin = FMath::Min(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		float SubtleMax = FMath::Max(MinSubtleMovementInterval, MaxSubtleMovementInterval);
+		NextSubtleMovementTime = FMath::RandRange(SubtleMin, SubtleMax);
 		
 		// Reset breathing cycle
 		BreathingCycleTime = 0.0f;
