@@ -10,7 +10,12 @@ All behavior states have been successfully implemented:
   - Deliberate, heavy pace using normal navigation
   - Random reachable destinations within defined range
   - Occasional stops to listen or look around
-- ✅ **Patrol (Crawling)** - Monster patrols while crawling (base implementation provided)
+- ✅ **Patrol (Crawling)** - Monster patrols while crawling with:
+  - Custom pathfinding system allowing full freedom of movement across floors, walls, and ceilings
+  - Surface detection and automatic attachment mechanics
+  - Smooth transitions between surfaces
+  - Mid-patrol surface transitions for unpredictability
+  - Surface-aware orientation and movement
 
 ---
 
@@ -49,12 +54,21 @@ Features:
 - State management system
 - Configurable movement speeds per state
 - Automatic speed adjustment on state change
+- **Surface attachment and orientation system for crawling**
+- **Smooth surface transitions with automatic rotation alignment**
 - Blueprint-callable functions:
   - `GetBehaviorState()` - Get current state
   - `SetBehaviorState()` - Change state
   - `GetMovementSpeedForState()` - Query speed for state
-- Blueprint-implementable event:
+  - `GetCurrentSurfaceNormal()` - Get surface normal monster is attached to
+  - `IsAttachedToSurface()` - Check if attached to surface
+  - `UpdateSurfaceAttachment()` - Update surface attachment and orientation
+- Blueprint-implementable events:
   - `OnBehaviorStateChanged()` - React to state changes
+  - `OnSurfaceTransition()` - React to surface transitions
+  - `OnNeckTwitch()` - Trigger neck twitch animation
+  - `OnFingerShift()` - Trigger finger shift animation
+  - `OnBreathingUpdate()` - Update breathing animation
 
 #### AMonsterAIController (AI Controller)
 Features:
@@ -67,7 +81,7 @@ Features:
 - Blueprint-implementable behaviors:
   - `ExecuteIdleBehavior()` - Idle behavior logic with breathing and subtle movements
   - `ExecutePatrolStandingBehavior()` - Standing patrol logic with navigation and stops
-  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic (base implementation)
+  - `ExecutePatrolCrawlingBehavior()` - **Crawling patrol with custom surface-aware pathfinding**
 - State lifecycle events:
   - `OnEnterState()` - Called when entering a state
   - `OnExitState()` - Called when leaving a state
@@ -78,11 +92,21 @@ Features:
 - Idle duration before potential patrol transition
 - Patrol transition probability
 
-**Patrol Behavior Configuration:**
+**Patrol Standing Behavior Configuration:**
 - Patrol range for destination selection
 - Stop duration range for listening/looking around
 - Acceptance radius for destination reach detection
 - Uses UE4 NavigationSystem for pathfinding
+
+**Patrol Crawling Behavior Configuration:**
+- **Custom pathfinding system for surface navigation**
+- **Surface detection with configurable trace distance**
+- **Automatic surface attachment and orientation alignment**
+- **Mid-patrol surface transition for unpredictability**
+- Surface transition chance and interval timing
+- Maximum surface angle for transitions (walls, ceilings)
+- Surface search distance for finding adjacent surfaces
+- Smooth rotation alignment with configurable speed
 
 ### 3. Documentation
 Comprehensive documentation covering:

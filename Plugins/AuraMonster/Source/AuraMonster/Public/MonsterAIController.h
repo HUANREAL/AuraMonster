@@ -102,6 +102,26 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
 	float PatrolAcceptanceRadius;
 
+	/** Chance (0.0 to 1.0) to transition to a different surface mid-patrol when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionChance;
+
+	/** Minimum time in seconds between surface transition attempts when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MinSurfaceTransitionInterval;
+
+	/** Maximum time in seconds between surface transition attempts when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MaxSurfaceTransitionInterval;
+
+	/** Maximum angle in degrees for surface transitions (e.g., 90 for wall climbing) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float MaxSurfaceAngle;
+
+	/** Distance to search for adjacent surfaces when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
+	float SurfaceSearchDistance;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
@@ -143,6 +163,24 @@ private:
 	UPROPERTY()
 	UPathFollowingComponent* CachedPathFollowingComp;
 
+	/** Time accumulated since last surface transition check when crawling */
+	float TimeSinceSurfaceTransitionCheck;
+
+	/** Target time until next surface transition check when crawling */
+	float NextSurfaceTransitionCheckTime;
+
+	/** Current crawling destination for surface-aware pathfinding */
+	FVector CurrentCrawlingDestination;
+
+	/** Whether a valid crawling destination has been set */
+	bool bHasCrawlingDestination;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
+
+	/** Find a crawling destination on nearby surfaces (walls, ceilings, floors) */
+	bool FindCrawlingSurfaceDestination(FVector& OutDestination);
+
+	/** Attempt to transition to an adjacent surface for unpredictability */
+	void AttemptSurfaceTransition();
 };

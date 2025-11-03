@@ -39,6 +39,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;
 
+	/** Get the current surface normal the monster is attached to */
+	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
+	FVector GetCurrentSurfaceNormal() const { return CurrentSurfaceNormal; }
+
+	/** Check if monster is currently attached to a surface */
+	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
+	bool IsAttachedToSurface() const { return bIsAttachedToSurface; }
+
+	/** Update surface attachment and orientation for crawling */
+	UFUNCTION(BlueprintCallable, Category = "Monster|Crawling")
+	void UpdateSurfaceAttachment(float DeltaTime);
+
 protected:
 	/** Current behavior state of the monster */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster")
@@ -51,6 +63,22 @@ protected:
 	/** Movement speed when patrolling while crawling */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Movement")
 	float PatrolCrawlingSpeed;
+
+	/** Maximum distance to trace for surface detection when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling")
+	float SurfaceTraceDistance;
+
+	/** Speed at which the monster rotates to align with surface normal */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Crawling")
+	float SurfaceAlignmentSpeed;
+
+	/** Current surface normal the monster is attached to */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Crawling")
+	FVector CurrentSurfaceNormal;
+
+	/** Whether the monster is currently attached to a surface */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Crawling")
+	bool bIsAttachedToSurface;
 
 	/** Called when behavior state changes */
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster")
@@ -71,4 +99,9 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
 	void OnBreathingUpdate(float BreathingIntensity);
 	virtual void OnBreathingUpdate_Implementation(float BreathingIntensity);
+
+	/** Called when the monster transitions to a new surface */
+	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Crawling")
+	void OnSurfaceTransition(const FVector& NewSurfaceNormal);
+	virtual void OnSurfaceTransition_Implementation(const FVector& NewSurfaceNormal);
 };

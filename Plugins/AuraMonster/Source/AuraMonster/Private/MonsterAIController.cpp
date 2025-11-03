@@ -25,6 +25,13 @@ AMonsterAIController::AMonsterAIController()
 	MaxStopDuration = 5.0f;
 	PatrolAcceptanceRadius = 100.0f;
 
+	// Initialize crawling behavior parameters with reasonable defaults
+	SurfaceTransitionChance = 0.3f;
+	MinSurfaceTransitionInterval = 3.0f;
+	MaxSurfaceTransitionInterval = 8.0f;
+	MaxSurfaceAngle = 90.0f;
+	SurfaceSearchDistance = 500.0f;
+
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
@@ -36,6 +43,12 @@ AMonsterAIController::AMonsterAIController()
 	CurrentStopTime = 0.0f;
 	TargetStopDuration = 0.0f;
 	bIsStoppedAtDestination = false;
+	
+	// Initialize crawling variables
+	TimeSinceSurfaceTransitionCheck = 0.0f;
+	NextSurfaceTransitionCheckTime = 0.0f;
+	CurrentCrawlingDestination = FVector::ZeroVector;
+	bHasCrawlingDestination = false;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -271,9 +284,223 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
 {
-	// Default patrol crawling behavior
-	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
-	// Similar to standing patrol but with different animation/movement style
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Update surface transition timer
+	TimeSinceSurfaceTransitionCheck += DeltaTime;
+
+	// Check if we're currently stopped at a destination to listen/look around
+	if (bIsStoppedAtDestination)
+	{
+		CurrentStopTime += DeltaTime;
+		
+		// Check if we've waited long enough
+		if (CurrentStopTime >= TargetStopDuration)
+		{
+			// Done stopping, ready to move to next destination
+			bIsStoppedAtDestination = false;
+			CurrentStopTime = 0.0f;
+			bHasCrawlingDestination = false; // Force new destination selection
+		}
+		else
+		{
+			// Still waiting, don't move yet
+			return;
+		}
+	}
+
+	// Attempt unpredictable surface transition mid-patrol
+	if (TimeSinceSurfaceTransitionCheck >= NextSurfaceTransitionCheckTime)
+	{
+		AttemptSurfaceTransition();
+		TimeSinceSurfaceTransitionCheck = 0.0f;
+		NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
+	}
+
+	// Check if we're currently moving to a destination
+	if (bHasCrawlingDestination)
+	{
+		FVector CurrentLocation = ControlledMonster->GetActorLocation();
+		float DistanceToDestination = FVector::Dist(CurrentLocation, CurrentCrawlingDestination);
+
+		// Check if we've reached the destination
+		if (DistanceToDestination <= PatrolAcceptanceRadius)
+		{
+			// We've reached destination, now stop to listen/look around
+			bIsStoppedAtDestination = true;
+			CurrentStopTime = 0.0f;
+			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			bHasCrawlingDestination = false;
+			
+			// Stop movement
+			StopMovement();
+			return;
+		}
+
+		// Continue moving toward destination
+		// Move along the surface with custom pathfinding
+		FVector DirectionToDestination = (CurrentCrawlingDestination - CurrentLocation).GetSafeNormal();
+		
+		// Apply movement input
+		if (ControlledMonster->GetCharacterMovement())
+		{
+			ControlledMonster->AddMovementInput(DirectionToDestination, 1.0f);
+		}
+		
+		return;
+	}
+
+	// Need to find a new crawling destination on a surface
+	FVector NewDestination;
+	if (FindCrawlingSurfaceDestination(NewDestination))
+	{
+		CurrentCrawlingDestination = NewDestination;
+		bHasCrawlingDestination = true;
+	}
+}
+
+bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestination)
+{
+	if (!ControlledMonster || !GetWorld())
+	{
+		return false;
+	}
+
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	
+	// Try multiple random directions to find a valid surface location
+	const int32 MaxAttempts = 8;
+	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+	{
+		// Generate a random direction
+		FVector RandomDirection = FMath::VRand();
+		
+		// Scale by search distance
+		FVector SearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
+		
+		// Trace to find surfaces in multiple directions (down, forward, up, sides)
+		TArray<FVector> TraceDirections;
+		TraceDirections.Add(FVector::DownVector);
+		TraceDirections.Add(FVector::ForwardVector);
+		TraceDirections.Add(FVector::UpVector);
+		TraceDirections.Add(FVector::RightVector);
+		TraceDirections.Add(FVector::LeftVector);
+		TraceDirections.Add(-FVector::ForwardVector);
+		
+		for (const FVector& TraceDir : TraceDirections)
+		{
+			FVector TraceStart = SearchLocation;
+			FVector TraceEnd = SearchLocation + TraceDir * SurfaceSearchDistance;
+			
+			FHitResult HitResult;
+			FCollisionQueryParams QueryParams;
+			QueryParams.AddIgnoredActor(ControlledMonster);
+			
+			bool bHit = GetWorld()->LineTraceSingleByChannel(
+				HitResult,
+				TraceStart,
+				TraceEnd,
+				ECC_Visibility,
+				QueryParams
+			);
+			
+			if (bHit)
+			{
+				// Check if the surface angle is within acceptable range
+				float SurfaceAngle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector)));
+				
+				if (SurfaceAngle <= MaxSurfaceAngle)
+				{
+					// Valid surface found - offset slightly from surface
+					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+					return true;
+				}
+			}
+		}
+	}
+	
+	// Fallback: use standard navigation if no surface found
+	if (CachedNavSystem)
+	{
+		FNavLocation ResultLocation;
+		bool bFoundLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
+		
+		if (bFoundLocation)
+		{
+			OutDestination = ResultLocation.Location;
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+void AMonsterAIController::AttemptSurfaceTransition()
+{
+	// Check if we should attempt a surface transition
+	float RandomValue = FMath::FRand();
+	if (RandomValue >= SurfaceTransitionChance)
+	{
+		return; // No transition this time
+	}
+	
+	if (!ControlledMonster || !GetWorld())
+	{
+		return;
+	}
+	
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	FVector CurrentUpVector = ControlledMonster->GetActorUpVector();
+	
+	// Look for adjacent surfaces at different angles
+	TArray<FVector> SearchDirections;
+	
+	// Add perpendicular directions for wall/ceiling transitions
+	FVector RightVector = ControlledMonster->GetActorRightVector();
+	FVector ForwardVector = ControlledMonster->GetActorForwardVector();
+	
+	SearchDirections.Add(RightVector);
+	SearchDirections.Add(-RightVector);
+	SearchDirections.Add(ForwardVector);
+	SearchDirections.Add(-ForwardVector);
+	SearchDirections.Add(-CurrentUpVector); // Look for surfaces in opposite direction
+	
+	for (const FVector& SearchDir : SearchDirections)
+	{
+		FVector TraceStart = CurrentLocation;
+		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * 0.5f;
+		
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(ControlledMonster);
+		
+		bool bHit = GetWorld()->LineTraceSingleByChannel(
+			HitResult,
+			TraceStart,
+			TraceEnd,
+			ECC_Visibility,
+			QueryParams
+		);
+		
+		if (bHit)
+		{
+			// Check if this is a different surface
+			float DotProduct = FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal);
+			
+			// If surface normal is significantly different, transition to it
+			if (FMath::Abs(DotProduct) < 0.9f) // More than ~25 degrees difference
+			{
+				// Set new destination on the different surface
+				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+				bHasCrawlingDestination = true;
+				bIsStoppedAtDestination = false; // Cancel any current stop
+				return; // Successfully found and set transition destination
+			}
+		}
+	}
 }
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
@@ -308,6 +535,14 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
+		
+		// Reset crawling-specific variables if entering crawling state
+		if (NewState == EMonsterBehaviorState::PatrolCrawling)
+		{
+			TimeSinceSurfaceTransitionCheck = 0.0f;
+			NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
+			bHasCrawlingDestination = false;
+		}
 	}
 }
 

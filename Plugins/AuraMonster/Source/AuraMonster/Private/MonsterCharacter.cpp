@@ -15,6 +15,12 @@ AMonsterCharacter::AMonsterCharacter()
 	// Set default movement speeds
 	PatrolStandingSpeed = 300.0f;
 	PatrolCrawlingSpeed = 150.0f;
+
+	// Initialize crawling properties
+	SurfaceTraceDistance = 200.0f;
+	SurfaceAlignmentSpeed = 5.0f;
+	CurrentSurfaceNormal = FVector::UpVector;
+	bIsAttachedToSurface = false;
 }
 
 // Called when the game starts or when spawned
@@ -33,6 +39,12 @@ void AMonsterCharacter::BeginPlay()
 void AMonsterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// Update surface attachment when in crawling mode
+	if (CurrentBehaviorState == EMonsterBehaviorState::PatrolCrawling)
+	{
+		UpdateSurfaceAttachment(DeltaTime);
+	}
 }
 
 // Called to bind functionality to input
@@ -95,4 +107,73 @@ void AMonsterCharacter::OnFingerShift_Implementation()
 void AMonsterCharacter::OnBreathingUpdate_Implementation(float BreathingIntensity)
 {
 	// Default implementation - can be overridden in Blueprint or subclasses to update breathing animation
+}
+
+void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	// Trace downward from the character to detect the surface
+	FVector StartLocation = GetActorLocation();
+	FVector EndLocation = StartLocation - GetActorUpVector() * SurfaceTraceDistance;
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		StartLocation,
+		EndLocation,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	if (bHit)
+	{
+		bIsAttachedToSurface = true;
+		FVector NewSurfaceNormal = HitResult.ImpactNormal;
+
+		// Check if surface normal has changed significantly
+		float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, NewSurfaceNormal);
+		if (DotProduct < 0.99f) // Approximately 8 degrees threshold
+		{
+			// Surface has changed, trigger transition event
+			OnSurfaceTransition(NewSurfaceNormal);
+			CurrentSurfaceNormal = NewSurfaceNormal;
+		}
+
+		// Smoothly rotate to align with surface normal
+		FRotator CurrentRotation = GetActorRotation();
+		FRotator TargetRotation = NewSurfaceNormal.Rotation();
+		
+		// Adjust pitch and roll to align with surface, preserve yaw for movement direction
+		TargetRotation.Yaw = CurrentRotation.Yaw;
+		
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, SurfaceAlignmentSpeed);
+		SetActorRotation(NewRotation);
+	}
+	else
+	{
+		// No surface detected, gradually return to default orientation
+		bIsAttachedToSurface = false;
+		FVector DefaultNormal = FVector::UpVector;
+		CurrentSurfaceNormal = FMath::VInterpTo(CurrentSurfaceNormal, DefaultNormal, DeltaTime, SurfaceAlignmentSpeed * 0.5f);
+		
+		FRotator CurrentRotation = GetActorRotation();
+		FRotator DefaultRotation = FRotator::ZeroRotator;
+		DefaultRotation.Yaw = CurrentRotation.Yaw;
+		
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, DefaultRotation, DeltaTime, SurfaceAlignmentSpeed * 0.5f);
+		SetActorRotation(NewRotation);
+	}
+}
+
+void AMonsterCharacter::OnSurfaceTransition_Implementation(const FVector& NewSurfaceNormal)
+{
+	// Default implementation - can be overridden in Blueprint or subclasses
+	// to trigger animations or effects when transitioning to a new surface
 }

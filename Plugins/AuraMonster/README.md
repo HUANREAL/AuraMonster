@@ -20,8 +20,14 @@ The plugin implements three distinct behavior states for monsters:
    - Walks toward destinations with occasional stops to listen or look around
    - Configurable patrol range, stop duration, and acceptance radius
 
-3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture
-   - Can be customized with similar behavior to standing patrol
+3. **Patrol (Crawling)** - Monster patrols while crawling on surfaces (floors, walls, ceilings)
+   - **Custom pathfinding system** allowing full freedom of movement across all surfaces
+   - **Surface detection and attachment** - Monster automatically detects and attaches to nearby surfaces
+   - **Smooth surface transitions** - Seamlessly moves between floors, walls, and ceilings
+   - **Mid-patrol surface changes** - Unpredictably transitions to different surfaces for added realism
+   - Slower movement speed compared to standing patrol (configurable via PatrolCrawlingSpeed)
+   - Surface-aware orientation - Monster rotates to align with the surface it's crawling on
+   - Configurable surface transition frequency and search distance
 
 ### Core Components
 
@@ -41,6 +47,10 @@ Base character class for monsters with:
 **Key Properties:**
 - `PatrolStandingSpeed` (default: 300.0) - Movement speed when patrolling while standing
 - `PatrolCrawlingSpeed` (default: 150.0) - Movement speed when patrolling while crawling
+- `SurfaceTraceDistance` (default: 200.0) - Maximum distance to trace for surface detection when crawling
+- `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with surface normal
+- `CurrentSurfaceNormal` - Current surface normal the monster is attached to (read-only)
+- `bIsAttachedToSurface` - Whether the monster is currently attached to a surface (read-only)
 
 **Key Functions:**
 - `GetBehaviorState()` - Returns current behavior state
@@ -50,6 +60,10 @@ Base character class for monsters with:
 - `OnNeckTwitch()` - Event called to trigger neck twitch animation (Blueprint implementable)
 - `OnFingerShift()` - Event called to trigger finger shift animation (Blueprint implementable)
 - `OnBreathingUpdate(BreathingIntensity)` - Event called each frame with breathing intensity 0.0-1.0 (Blueprint implementable)
+- `GetCurrentSurfaceNormal()` - Returns the current surface normal the monster is attached to
+- `IsAttachedToSurface()` - Returns whether the monster is currently attached to a surface
+- `UpdateSurfaceAttachment(DeltaTime)` - Updates surface attachment and orientation (automatically called when crawling)
+- `OnSurfaceTransition(NewSurfaceNormal)` - Event called when transitioning to a new surface (Blueprint implementable)
 
 #### AMonsterAIController (AI Controller)
 AI controller that manages monster behavior:
@@ -80,6 +94,13 @@ AI controller that manages monster behavior:
 - `MinStopDuration` (default: 2.0) - Minimum seconds to wait at each patrol destination (to listen/look around)
 - `MaxStopDuration` (default: 5.0) - Maximum seconds to wait at each patrol destination (to listen/look around)
 - `PatrolAcceptanceRadius` (default: 100.0) - How close the monster needs to get to the destination before considering it reached
+
+**Crawling Behavior Properties:**
+- `SurfaceTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to a different surface mid-patrol
+- `MinSurfaceTransitionInterval` (default: 3.0) - Minimum seconds between surface transition attempts
+- `MaxSurfaceTransitionInterval` (default: 8.0) - Maximum seconds between surface transition attempts
+- `MaxSurfaceAngle` (default: 90.0) - Maximum angle in degrees for surface transitions (e.g., 90 for wall climbing)
+- `SurfaceSearchDistance` (default: 500.0) - Distance to search for adjacent surfaces when crawling
 
 ## Installation
 
