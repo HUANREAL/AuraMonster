@@ -382,7 +382,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	
 	// Pre-calculated trace directions to avoid repeated allocations
-	static const TArray<FVector> TraceDirections = {
+	static const FVector TraceDirections[] = {
 		FVector::DownVector,
 		FVector::ForwardVector,
 		FVector::UpVector,
@@ -474,29 +474,16 @@ void AMonsterAIController::AttemptSurfaceTransition()
 	FVector ForwardVector = ControlledMonster->GetActorForwardVector();
 	
 	// Search in perpendicular directions for wall/ceiling transitions
-	static const FVector RelativeDirections[] = {
-		FVector::RightVector,    // Right
-		FVector::LeftVector,     // Left (-Right)
-		FVector::ForwardVector,  // Forward
-		FVector::BackwardVector, // Backward (-Forward)
-		FVector::DownVector      // Opposite to up
+	const FVector SearchDirections[] = {
+		RightVector,         // Right
+		-RightVector,        // Left
+		ForwardVector,       // Forward
+		-ForwardVector,      // Backward
+		-CurrentUpVector     // Down (opposite to up)
 	};
 	
-	for (const FVector& RelativeDir : RelativeDirections)
+	for (const FVector& SearchDir : SearchDirections)
 	{
-		// Transform relative direction to world space based on character orientation
-		FVector SearchDir;
-		if (RelativeDir == FVector::RightVector)
-			SearchDir = RightVector;
-		else if (RelativeDir == FVector::LeftVector)
-			SearchDir = -RightVector;
-		else if (RelativeDir == FVector::ForwardVector)
-			SearchDir = ForwardVector;
-		else if (RelativeDir == FVector::BackwardVector)
-			SearchDir = -ForwardVector;
-		else // DownVector
-			SearchDir = -CurrentUpVector;
-		
 		FVector TraceStart = CurrentLocation;
 		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * SurfaceTransitionSearchRatio;
 		
