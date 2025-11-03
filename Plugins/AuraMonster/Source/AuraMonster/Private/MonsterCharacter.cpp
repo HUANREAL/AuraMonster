@@ -118,9 +118,9 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		return;
 	}
 
-	// Trace along character's up vector to detect the surface beneath
+	// Trace in world-space down direction to detect surfaces regardless of character orientation
 	FVector StartLocation = GetActorLocation();
-	FVector EndLocation = StartLocation - GetActorUpVector() * SurfaceTraceDistance;
+	FVector EndLocation = StartLocation + FVector::DownVector * SurfaceTraceDistance;
 
 	FHitResult HitResult;
 	FCollisionQueryParams QueryParams;
@@ -152,11 +152,27 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		// Smoothly rotate to align with surface normal
 		FRotator CurrentRotation = GetActorRotation();
 		
-		// Convert surface normal to rotation properly
-		FRotator TargetRotation = FRotationMatrix::MakeFromZ(NewSurfaceNormal).Rotator();
+		// Project the current forward vector onto the new surface to maintain movement direction
+		FVector CurrentForward = GetActorForwardVector();
+		FVector ProjectedForward = CurrentForward - FVector::DotProduct(CurrentForward, NewSurfaceNormal) * NewSurfaceNormal;
 		
-		// Adjust pitch and roll to align with surface, preserve yaw for movement direction
-		TargetRotation.Yaw = CurrentRotation.Yaw;
+		if (!ProjectedForward.IsNearlyZero())
+		{
+			ProjectedForward.Normalize();
+		}
+		else
+		{
+			// Fallback: use any vector perpendicular to the normal
+			ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, FVector::RightVector);
+			if (ProjectedForward.IsNearlyZero())
+			{
+				ProjectedForward = FVector::CrossProduct(NewSurfaceNormal, FVector::ForwardVector);
+			}
+			ProjectedForward.Normalize();
+		}
+
+		// Build a rotation from the projected forward and the new surface normal
+		FRotator TargetRotation = FRotationMatrix::MakeFromXZ(ProjectedForward, NewSurfaceNormal).Rotator();
 		
 		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, SurfaceAlignmentSpeed);
 		SetActorRotation(NewRotation);

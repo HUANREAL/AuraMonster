@@ -351,13 +351,15 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		}
 
 		// Continue moving toward destination
-		// Move along the surface with custom pathfinding
+		// Project movement direction onto the surface plane to ensure surface-relative movement
 		FVector DirectionToDestination = (CurrentCrawlingDestination - CurrentLocation).GetSafeNormal();
+		FVector SurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
+		FVector ProjectedDirection = FVector::VectorPlaneProject(DirectionToDestination, SurfaceNormal).GetSafeNormal();
 		
 		// Apply movement input
 		if (ControlledMonster->GetCharacterMovement())
 		{
-			ControlledMonster->AddMovementInput(DirectionToDestination, 1.0f);
+			ControlledMonster->AddMovementInput(ProjectedDirection, 1.0f);
 		}
 		
 		return;
@@ -387,8 +389,8 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 		FVector::ForwardVector,
 		FVector::UpVector,
 		FVector::RightVector,
-		FVector::LeftVector,
-		-FVector::ForwardVector
+		-FVector::RightVector,  // Left direction
+		-FVector::ForwardVector // Backward direction
 	};
 	
 	// Try multiple random directions to find a valid surface location
@@ -506,7 +508,8 @@ void AMonsterAIController::AttemptSurfaceTransition()
 			float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal), -1.0f, 1.0f);
 			
 			// If surface normal is significantly different, transition to it
-			if (FMath::Abs(DotProduct) < SurfaceTransitionAngleThreshold)
+			// Compare raw dot product to detect genuinely different orientations
+			if (DotProduct < SurfaceTransitionAngleThreshold)
 			{
 				// Set new destination on the different surface using cached offset value
 				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
