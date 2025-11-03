@@ -104,6 +104,7 @@ AI controller that manages monster behavior:
 - `MaxSurfaceTransitionInterval` (default: 8.0) - Maximum seconds between surface transition attempts
 - `MaxSurfaceAngle` (default: 90.0) - Maximum angle in degrees for surface transitions (e.g., 90 for wall climbing)
 - `SurfaceSearchDistance` (default: 500.0) - Distance to search for adjacent surfaces when crawling
+- `MaxSurfaceSearchAttempts` (default: 8) - Maximum number of random attempts to find a valid crawling surface destination
 - `SurfaceTransitionSearchRatio` (default: 0.5) - Ratio of SurfaceSearchDistance to use for surface transition searches (0.0-1.0)
 - `SurfaceTransitionAngleThreshold` (default: 0.9) - Threshold for detecting different surfaces (0.0-1.0, lower = more sensitive to angle changes)
 

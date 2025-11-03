@@ -31,6 +31,7 @@ AMonsterAIController::AMonsterAIController()
 	MaxSurfaceTransitionInterval = 8.0f;
 	MaxSurfaceAngle = 90.0f;
 	SurfaceSearchDistance = 500.0f;
+	MaxSurfaceSearchAttempts = 8;
 	SurfaceTransitionSearchRatio = 0.5f;
 	SurfaceTransitionAngleThreshold = 0.9f;
 
@@ -380,9 +381,18 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	
+	// Pre-calculated trace directions to avoid repeated allocations
+	static const TArray<FVector> TraceDirections = {
+		FVector::DownVector,
+		FVector::ForwardVector,
+		FVector::UpVector,
+		FVector::RightVector,
+		FVector::LeftVector,
+		-FVector::ForwardVector
+	};
+	
 	// Try multiple random directions to find a valid surface location
-	const int32 MaxAttempts = 8;
-	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+	for (int32 Attempt = 0; Attempt < MaxSurfaceSearchAttempts; ++Attempt)
 	{
 		// Generate a random direction
 		FVector RandomDirection = FMath::VRand();
@@ -390,15 +400,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 		// Scale by search distance
 		FVector SearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
 		
-		// Trace to find surfaces in multiple directions (down, forward, up, sides)
-		TArray<FVector> TraceDirections;
-		TraceDirections.Add(FVector::DownVector);
-		TraceDirections.Add(FVector::ForwardVector);
-		TraceDirections.Add(FVector::UpVector);
-		TraceDirections.Add(FVector::RightVector);
-		TraceDirections.Add(FVector::LeftVector);
-		TraceDirections.Add(-FVector::ForwardVector);
-		
+		// Trace to find surfaces in multiple directions
 		for (const FVector& TraceDir : TraceDirections)
 		{
 			FVector TraceStart = SearchLocation;
@@ -466,18 +468,18 @@ void AMonsterAIController::AttemptSurfaceTransition()
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	FVector CurrentUpVector = ControlledMonster->GetActorUpVector();
 	
-	// Look for adjacent surfaces at different angles
-	TArray<FVector> SearchDirections;
-	
-	// Add perpendicular directions for wall/ceiling transitions
+	// Pre-calculated search directions relative to character orientation
+	// These will be evaluated at runtime based on current orientation
 	FVector RightVector = ControlledMonster->GetActorRightVector();
 	FVector ForwardVector = ControlledMonster->GetActorForwardVector();
 	
-	SearchDirections.Add(RightVector);
-	SearchDirections.Add(-RightVector);
-	SearchDirections.Add(ForwardVector);
-	SearchDirections.Add(-ForwardVector);
-	SearchDirections.Add(-CurrentUpVector); // Look for surfaces in opposite direction
+	TArray<FVector> SearchDirections = {
+		RightVector,
+		-RightVector,
+		ForwardVector,
+		-ForwardVector,
+		-CurrentUpVector
+	};
 	
 	for (const FVector& SearchDir : SearchDirections)
 	{

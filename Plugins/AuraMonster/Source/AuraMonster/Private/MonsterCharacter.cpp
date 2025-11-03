@@ -118,7 +118,7 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		return;
 	}
 
-	// Trace downward from the character to detect the surface
+	// Trace along character's up vector to detect the surface beneath
 	FVector StartLocation = GetActorLocation();
 	FVector EndLocation = StartLocation - GetActorUpVector() * SurfaceTraceDistance;
 

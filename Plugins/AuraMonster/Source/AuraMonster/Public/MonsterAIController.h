@@ -122,6 +122,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling")
 	float SurfaceSearchDistance;
 
+	/** Maximum number of random attempts to find a valid crawling surface destination */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "1", ClampMax = "20"))
+	int32 MaxSurfaceSearchAttempts;
+
 	/** Ratio of SurfaceSearchDistance to use for surface transition searches (0.0-1.0) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SurfaceTransitionSearchRatio;
