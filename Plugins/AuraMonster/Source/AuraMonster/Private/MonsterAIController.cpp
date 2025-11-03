@@ -468,21 +468,35 @@ void AMonsterAIController::AttemptSurfaceTransition()
 	FVector CurrentLocation = ControlledMonster->GetActorLocation();
 	FVector CurrentUpVector = ControlledMonster->GetActorUpVector();
 	
-	// Pre-calculated search directions relative to character orientation
-	// These will be evaluated at runtime based on current orientation
+	// Calculate search directions dynamically based on current character orientation
+	// to look for adjacent surfaces at different angles
 	FVector RightVector = ControlledMonster->GetActorRightVector();
 	FVector ForwardVector = ControlledMonster->GetActorForwardVector();
 	
-	TArray<FVector> SearchDirections = {
-		RightVector,
-		-RightVector,
-		ForwardVector,
-		-ForwardVector,
-		-CurrentUpVector
+	// Search in perpendicular directions for wall/ceiling transitions
+	static const FVector RelativeDirections[] = {
+		FVector::RightVector,    // Right
+		FVector::LeftVector,     // Left (-Right)
+		FVector::ForwardVector,  // Forward
+		FVector::BackwardVector, // Backward (-Forward)
+		FVector::DownVector      // Opposite to up
 	};
 	
-	for (const FVector& SearchDir : SearchDirections)
+	for (const FVector& RelativeDir : RelativeDirections)
 	{
+		// Transform relative direction to world space based on character orientation
+		FVector SearchDir;
+		if (RelativeDir == FVector::RightVector)
+			SearchDir = RightVector;
+		else if (RelativeDir == FVector::LeftVector)
+			SearchDir = -RightVector;
+		else if (RelativeDir == FVector::ForwardVector)
+			SearchDir = ForwardVector;
+		else if (RelativeDir == FVector::BackwardVector)
+			SearchDir = -ForwardVector;
+		else // DownVector
+			SearchDir = -CurrentUpVector;
+		
 		FVector TraceStart = CurrentLocation;
 		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * SurfaceTransitionSearchRatio;
 		
