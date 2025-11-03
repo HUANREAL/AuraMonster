@@ -183,6 +183,7 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 			// Done stopping, ready to move to next destination
 			bIsStoppedAtDestination = false;
 			CurrentStopTime = 0.0f;
+			// Fall through to select new destination
 		}
 		else
 		{
@@ -191,24 +192,28 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		}
 	}
 
-	// Check if we have reached the current destination or don't have one
-	if (GetPathFollowingComponent() && GetPathFollowingComponent()->DidMoveReachGoal())
-	{
-		// We've reached destination, now stop to listen/look around
-		bIsStoppedAtDestination = true;
-		CurrentStopTime = 0.0f;
-		TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
-		
-		// Stop movement
-		StopMovement();
-		return;
-	}
-	
 	// Check if we're currently moving to a destination
-	if (GetPathFollowingComponent() && !GetPathFollowingComponent()->HasReached())
+	UPathFollowingComponent* PathFollowingComp = GetPathFollowingComponent();
+	if (PathFollowingComp)
 	{
+		// Check if we've reached the current destination
+		if (PathFollowingComp->DidMoveReachGoal())
+		{
+			// We've reached destination, now stop to listen/look around
+			bIsStoppedAtDestination = true;
+			CurrentStopTime = 0.0f;
+			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			
+			// Stop movement
+			StopMovement();
+			return;
+		}
+		
 		// Still moving to current destination, continue
-		return;
+		if (PathFollowingComp->GetStatus() == EPathFollowingStatus::Moving)
+		{
+			return;
+		}
 	}
 
 	// Need to select a new random patrol destination
