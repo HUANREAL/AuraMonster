@@ -16,5 +16,5 @@ void FAuraMonsterModule::ShutdownModule()
 }
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FAuraMonsterModule, AuraMonster)
