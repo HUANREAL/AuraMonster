@@ -14,7 +14,14 @@ The plugin implements three distinct behavior states for monsters:
    - Blueprint-implementable animation events
    
 2. **Patrol (Standing)** - Monster patrols an area while standing/walking upright
+   - Walks with deliberate, heavy pace (configurable via PatrolStandingSpeed)
+   - Follows the floor using UE4's navigation system
+   - Selects random reachable destinations within a defined range
+   - Walks toward destinations with occasional stops to listen or look around
+   - Configurable patrol range, stop duration, and acceptance radius
+
 3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture
+   - Can be customized with similar behavior to standing patrol
 
 ### Core Components
 
@@ -67,6 +74,12 @@ AI controller that manages monster behavior:
 - `MaxSubtleMovementInterval` (default: 6.0) - Maximum seconds between subtle movements
 - `BreathingCycleDuration` (default: 4.0) - Duration of one breathing cycle in seconds
 - `PatrolTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to patrol after idle duration
+
+**Patrol Behavior Properties:**
+- `PatrolRange` (default: 1000.0) - Maximum distance from current position to select patrol destinations
+- `MinStopDuration` (default: 2.0) - Minimum seconds to wait at each patrol destination (to listen/look around)
+- `MaxStopDuration` (default: 5.0) - Maximum seconds to wait at each patrol destination (to listen/look around)
+- `PatrolAcceptanceRadius` (default: 100.0) - How close the monster needs to get to the destination before considering it reached
 
 ## Installation
 
@@ -150,28 +163,34 @@ class AMyMonsterAI : public AMonsterAIController
 
 ### Example Behavior Implementation
 
-Here's an example of implementing a simple patrol behavior:
+The patrol standing behavior is already implemented by default with the following features:
+- Selects random reachable destinations within `PatrolRange`
+- Uses UE4's navigation system to follow the floor
+- Walks with deliberate, heavy pace (configured via `PatrolStandingSpeed`)
+- Stops at each destination for a random duration between `MinStopDuration` and `MaxStopDuration` to listen/look around
+
+If you want to customize or extend the patrol behavior, you can override `ExecutePatrolStandingBehavior_Implementation`:
+
+```cpp
+void AMyMonsterAI::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
+{
+    // Call the parent implementation for default patrol behavior
+    Super::ExecutePatrolStandingBehavior_Implementation(DeltaTime);
+    
+    // Add custom behavior here
+    // For example: detect nearby players, trigger animations, etc.
+}
+```
+
+Or implement completely custom patrol logic:
 
 ```cpp
 void AMyMonsterAI::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
 {
     if (!ControlledMonster) return;
     
-    // Example: Move to random location periodically
-    if (!GetPathFollowingComponent()->HasReached())
-    {
-        // Still moving to current target
-        return;
-    }
-    
-    // Generate random patrol point
-    FVector CurrentLocation = ControlledMonster->GetActorLocation();
-    FVector RandomOffset = FMath::VRand() * 1000.0f; // 1000 units radius
-    RandomOffset.Z = 0; // Keep on ground level
-    FVector TargetLocation = CurrentLocation + RandomOffset;
-    
-    // Move to target
-    MoveToLocation(TargetLocation);
+    // Custom patrol implementation
+    // For example: follow predefined waypoints instead of random locations
 }
 ```
 

@@ -27,27 +27,41 @@
 
 ### 2. Implementing Patrol Logic in Blueprint
 
-**In BP_MyMonsterAI:**
+**Note:** Patrol (Standing) behavior is already implemented with default logic:
+- Selects random reachable destinations within patrol range
+- Uses UE4's navigation system for pathfinding
+- Stops at destinations to listen/look around
+
+You can customize the patrol behavior by configuring properties in the AI Controller:
+
+**In BP_MyMonsterAI Details Panel (Monster AI | Patrol section):**
+- `Patrol Range`: 1000.0 (maximum distance for patrol destinations)
+- `Min Stop Duration`: 2.0 (minimum seconds to stop and listen)
+- `Max Stop Duration`: 5.0 (maximum seconds to stop and listen)
+- `Patrol Acceptance Radius`: 100.0 (how close to get to destination)
+
+**To override patrol behavior with custom logic:**
 
 1. Override "Execute Patrol Standing Behavior":
    ```
    Event Execute Patrol Standing Behavior
-   → AI Move To (Location or Actor)
+   → Parent: Execute Patrol Standing Behavior (optional, for default behavior)
+   → Add custom logic (e.g., detect enemies, trigger animations)
    ```
 
 2. Override "Execute Patrol Crawling Behavior":
    ```
    Event Execute Patrol Crawling Behavior
-   → AI Move To (Location or Actor)
-   → (Use slower/different movement pattern)
+   → Implement custom crawling patrol logic
+   → (Can copy standing patrol pattern or create unique behavior)
    ```
 
 3. Override "On Enter State":
    ```
    Event On Enter State
    → Branch (check NewState)
-     → If PatrolStanding: Initialize standing patrol
-     → If PatrolCrawling: Initialize crawling patrol
+     → If PatrolStanding: Initialize custom patrol data
+     → If PatrolCrawling: Initialize crawling patrol data
      → If Idle: Stop movement
    ```
 

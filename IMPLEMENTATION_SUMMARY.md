@@ -5,9 +5,12 @@
 ### Requirements from Problem Statement
 All behavior states have been successfully implemented:
 
-- ✅ **Idle** - Monster remains stationary (movement speed: 0)
-- ✅ **Patrol (Standing)** - Monster patrols while standing/walking (movement speed: 300)
-- ✅ **Patrol (Crawling)** - Monster patrols while crawling (movement speed: 150)
+- ✅ **Idle** - Monster remains stationary with breathing and subtle movements
+- ✅ **Patrol (Standing)** - Monster patrols while standing/walking with:
+  - Deliberate, heavy pace using normal navigation
+  - Random reachable destinations within defined range
+  - Occasional stops to listen or look around
+- ✅ **Patrol (Crawling)** - Monster patrols while crawling (base implementation provided)
 
 ---
 
@@ -62,12 +65,24 @@ Features:
   - `TransitionToState()` - Change state
   - `GetCurrentState()` - Query current state
 - Blueprint-implementable behaviors:
-  - `ExecuteIdleBehavior()` - Idle behavior logic
-  - `ExecutePatrolStandingBehavior()` - Standing patrol logic
-  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic
+  - `ExecuteIdleBehavior()` - Idle behavior logic with breathing and subtle movements
+  - `ExecutePatrolStandingBehavior()` - Standing patrol logic with navigation and stops
+  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic (base implementation)
 - State lifecycle events:
   - `OnEnterState()` - Called when entering a state
   - `OnExitState()` - Called when leaving a state
+
+**Idle Behavior Configuration:**
+- Breathing cycle duration and intensity
+- Subtle movement timing (neck twitches, finger shifts)
+- Idle duration before potential patrol transition
+- Patrol transition probability
+
+**Patrol Behavior Configuration:**
+- Patrol range for destination selection
+- Stop duration range for listening/looking around
+- Acceptance radius for destination reach detection
+- Uses UE4 NavigationSystem for pathfinding
 
 ### 3. Documentation
 Comprehensive documentation covering:
