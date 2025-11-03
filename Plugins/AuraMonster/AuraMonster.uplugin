@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Aura Monster",
+	"Description": "A monster plugin with behavior states including Idle, Patrol (Standing), and Patrol (Crawling)",
+	"Category": "Gameplay",
+	"CreatedBy": "HUANREAL",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "AuraMonster",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
