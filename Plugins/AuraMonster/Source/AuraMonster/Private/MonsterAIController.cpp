@@ -423,7 +423,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 			{
 				// Check if the surface angle is within acceptable range
 				// Clamp dot product to prevent NaN from floating-point precision errors
-				FVector CurrentSurfaceNormal = ControlledMonster ? ControlledMonster->GetCurrentSurfaceNormal() : FVector::UpVector;
+				FVector CurrentSurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
 				float DotProduct = FMath::Clamp(FVector::DotProduct(HitResult.ImpactNormal, CurrentSurfaceNormal), -1.0f, 1.0f);
 				float SurfaceAngle = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
 				
