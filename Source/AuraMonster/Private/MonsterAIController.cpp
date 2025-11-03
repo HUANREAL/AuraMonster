@@ -5,6 +5,10 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
+// Minimum magnitude squared for projected direction to be considered valid for movement
+// This prevents movement in invalid directions (e.g., when destination is directly above/below)
+static constexpr float MinProjectedDirectionSizeSquared = 0.01f;
+
 AMonsterAIController::AMonsterAIController()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -360,7 +364,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		
 		// Check if projected direction is valid (not zero or near-zero)
 		// This can happen if destination is directly above/below current position
-		if (ProjectedDirection.SizeSquared() < 0.0001f)
+		if (ProjectedDirection.SizeSquared() < MinProjectedDirectionSizeSquared)
 		{
 			// Projected direction is too small, find a new destination
 			bHasCrawlingDestination = false;
@@ -454,7 +458,7 @@ bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestinatio
 					
 					// Only accept destination if projected direction is sufficiently large
 					// This prevents selecting destinations directly above/below current position
-					if (ProjectedDirection.SizeSquared() >= 0.01f)
+					if (ProjectedDirection.SizeSquared() >= MinProjectedDirectionSizeSquared)
 					{
 						OutDestination = PotentialDestination;
 						return true;
