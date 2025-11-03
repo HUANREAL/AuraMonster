@@ -499,7 +499,8 @@ void AMonsterAIController::AttemptSurfaceTransition()
 		if (bHit)
 		{
 			// Check if this is a different surface
-			float DotProduct = FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal);
+			// Clamp dot product to prevent precision errors
+			float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal), -1.0f, 1.0f);
 			
 			// If surface normal is significantly different, transition to it
 			if (FMath::Abs(DotProduct) < SurfaceTransitionAngleThreshold)
