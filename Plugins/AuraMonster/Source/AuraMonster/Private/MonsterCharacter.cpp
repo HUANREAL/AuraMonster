@@ -140,7 +140,8 @@ void AMonsterCharacter::UpdateSurfaceAttachment(float DeltaTime)
 		FVector NewSurfaceNormal = HitResult.ImpactNormal;
 
 		// Check if surface normal has changed significantly
-		float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, NewSurfaceNormal);
+		// Clamp dot product to prevent NaN from floating-point precision errors
+		float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentSurfaceNormal, NewSurfaceNormal), -1.0f, 1.0f);
 		if (DotProduct < SurfaceChangeThreshold)
 		{
 			// Surface has changed, trigger transition event
