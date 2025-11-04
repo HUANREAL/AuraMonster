@@ -1,30 +1,32 @@
 # AuraMonster Plugin Structure
 
 ```
-AuraMonster/                                       # Main plugin directory
-├── AuraMonster.uplugin                            # Plugin descriptor file
-├── README.md                                      # Comprehensive documentation
-├── QUICKSTART.md                                  # Quick start guide with examples
-├── IMPLEMENTATION_SUMMARY.md                      # Implementation summary
-├── PLUGIN_STRUCTURE.md                            # This file - structure documentation
-├── LICENSE                                        # License file
+AuraMonster/
 │
-├── Resources/                                     # Plugin resources (empty for now)
+├── Plugins/
+│   └── AuraMonster/                              # Main plugin directory
+│       ├── AuraMonster.uplugin                   # Plugin descriptor file
+│       ├── README.md                             # Comprehensive documentation
+│       ├── QUICKSTART.md                         # Quick start guide with examples
+│       │
+│       ├── Resources/                            # Plugin resources (empty for now)
+│       │
+│       └── Source/
+│           └── AuraMonster/                      # Module source code
+│               ├── AuraMonster.Build.cs          # Build configuration
+│               │
+│               ├── Public/                       # Public headers (API)
+│               │   ├── AuraMonster.h             # Module interface
+│               │   ├── MonsterBehaviorState.h    # Behavior state enum
+│               │   ├── MonsterCharacter.h        # Monster character class
+│               │   └── MonsterAIController.h     # AI controller class
+│               │
+│               └── Private/                      # Implementation files
+│                   ├── AuraMonster.cpp           # Module implementation
+│                   ├── MonsterCharacter.cpp      # Character implementation
+│                   └── MonsterAIController.cpp   # AI controller implementation
 │
-└── Source/
-    └── AuraMonster/                               # Module source code
-        ├── AuraMonster.Build.cs                   # Build configuration
-        │
-        ├── Public/                                # Public headers (API)
-        │   ├── AuraMonster.h                      # Module interface
-        │   ├── MonsterBehaviorState.h             # Behavior state enum
-        │   ├── MonsterCharacter.h                 # Monster character class
-        │   └── MonsterAIController.h              # AI controller class
-        │
-        └── Private/                               # Implementation files
-            ├── AuraMonster.cpp                    # Module implementation
-            ├── MonsterCharacter.cpp               # Character implementation
-            └── MonsterAIController.cpp            # AI controller implementation
+└── README.md                                     # Repository documentation
 ```
 
 ## File Descriptions
@@ -102,7 +104,7 @@ AuraMonster/                                       # Main plugin directory
 ## Usage Flow
 
 ```
-1. Copy the AuraMonster plugin folder to your project's Plugins/ directory
+1. Copy plugin to project's Plugins/ folder
 2. Enable plugin in UE4 Editor
 3. Create Blueprint subclass of MonsterCharacter
 4. Create Blueprint subclass of MonsterAIController
