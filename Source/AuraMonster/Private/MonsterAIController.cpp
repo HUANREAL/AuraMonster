@@ -390,8 +390,8 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		QueryParams.AddIgnoredActor(ControlledMonster);
 		
 		// Lambda to update position on detected surface
-		// Capture only the specific variables needed to avoid unintended side effects
-		auto UpdatePositionOnSurface = [this, &TargetSurfaceNormal](const FHitResult& Hit)
+		// Captures this pointer to access member variables (ControlledMonster, TargetSurfaceNormal, CrawlSurfaceOffset)
+		auto UpdatePositionOnSurface = [this](const FHitResult& Hit)
 		{
 			FVector SurfacePoint = Hit.ImpactPoint;
 			FVector SurfaceNormal = Hit.ImpactNormal;
