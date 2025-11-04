@@ -148,7 +148,7 @@ protected:
 
 private:
 	/** Current behavior state */
-	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
+	UPROPERTY(EditAnywhere, Category = "Monster AI")
 	EMonsterBehaviorState CurrentState;
 
 	/** Reference to the controlled monster character */

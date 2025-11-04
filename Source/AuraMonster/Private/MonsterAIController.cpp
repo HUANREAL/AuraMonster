@@ -81,10 +81,14 @@ void AMonsterAIController::BeginPlay()
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
 	
-	// Initialize with idle state
+	// Initialize with current state (respects pre-configured state from editor)
 	if (ControlledMonster)
 	{
-		TransitionToState(EMonsterBehaviorState::Idle);
+		// Update monster character's state to match AI controller state
+		ControlledMonster->SetBehaviorState(CurrentState);
+		
+		// Call OnEnterState to properly initialize the current state
+		OnEnterState(CurrentState);
 	}
 }
 
