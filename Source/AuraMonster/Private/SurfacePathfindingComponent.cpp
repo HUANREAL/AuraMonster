@@ -77,11 +77,19 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 	{
 		FVector RandomDirection;
 		
-		// For the first half of attempts, bias toward downward/horizontal directions
-		// This helps when on top of structures to find vertical walls and ground
-		if (Attempt < MaxAttempts / 2)
+		// Use varied biases to encourage exploring all directions including upward
+		// This helps the monster crawl higher on walls and explore different surfaces
+		if (Attempt < MaxAttempts / 3)
 		{
-			// Generate direction with downward bias
+			// First third: Bias toward upward/outward directions (for climbing higher)
+			RandomDirection.X = FMath::FRandRange(-1.0f, 1.0f);
+			RandomDirection.Y = FMath::FRandRange(-1.0f, 1.0f);
+			RandomDirection.Z = FMath::FRandRange(-0.3f, 1.0f); // Bias upward
+			RandomDirection.Normalize();
+		}
+		else if (Attempt < 2 * MaxAttempts / 3)
+		{
+			// Second third: Bias toward downward/horizontal directions (for descending)
 			RandomDirection.X = FMath::FRandRange(-1.0f, 1.0f);
 			RandomDirection.Y = FMath::FRandRange(-1.0f, 1.0f);
 			RandomDirection.Z = FMath::FRandRange(-1.0f, 0.3f); // Bias downward
@@ -89,7 +97,7 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 		}
 		else
 		{
-			// Use completely random direction for remaining attempts
+			// Final third: Use completely random direction for full coverage
 			RandomDirection = FMath::VRand();
 			RandomDirection.Normalize();
 		}
