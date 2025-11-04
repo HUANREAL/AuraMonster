@@ -102,6 +102,50 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol")
 	float PatrolAcceptanceRadius;
 
+	/** Maximum distance to check for crawlable surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float CrawlSurfaceDetectionDistance;
+
+	/** Chance (0.0 to 1.0) to transition to a different surface type during crawling patrol */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SurfaceTransitionChance;
+
+	/** Speed at which the monster rotates to align with new surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float SurfaceAlignmentSpeed;
+
+	/** Distance offset from surface to place the monster when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float CrawlSurfaceOffset;
+
+	/** Distance above current position for fallback floor detection trace start */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float FallbackTraceUpDistance;
+
+	/** Distance below current position for fallback floor detection trace end */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float FallbackTraceDownDistance;
+
+	/** Minimum pitch angle for random direction generation during normal crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MinCrawlPitch;
+
+	/** Maximum pitch angle for random direction generation during normal crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MaxCrawlPitch;
+
+	/** Minimum pitch angle when transitioning between surfaces to favor vertical surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MinTransitionPitch;
+
+	/** Maximum pitch angle when transitioning between surfaces to favor vertical surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MaxTransitionPitch;
+
+	/** Minimum distance multiplier (relative to PatrolRange) for crawl destinations */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MinCrawlDistanceMultiplier;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")
@@ -143,6 +187,39 @@ private:
 	UPROPERTY()
 	UPathFollowingComponent* CachedPathFollowingComp;
 
+	/** Current surface normal the monster is crawling on */
+	FVector CurrentSurfaceNormal;
+
+	/** Target surface normal for smooth transitions */
+	FVector TargetSurfaceNormal;
+
+	/** Current crawling destination */
+	FVector CrawlingDestination;
+
+	/** Whether currently moving to a crawling destination */
+	bool bIsMovingToCrawlDestination;
+
+	/** Whether currently transitioning between surfaces */
+	bool bIsTransitioningBetweenSurfaces;
+
+	/** Time accumulated while stopped at current crawl destination */
+	float CurrentCrawlStopTime;
+
+	/** Target duration to stop at current crawl destination */
+	float TargetCrawlStopDuration;
+
+	/** Whether the monster is currently stopped at a crawl destination */
+	bool bIsStoppedAtCrawlDestination;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
+
+	/** Find a crawlable surface point near the current location */
+	bool FindCrawlableDestination(FVector& OutLocation, FVector& OutSurfaceNormal);
+
+	/** Update monster orientation to align with surface */
+	void UpdateSurfaceAlignment(float DeltaTime);
+
+	/** Check if monster has reached the crawl destination */
+	bool HasReachedCrawlDestination() const;
 };
