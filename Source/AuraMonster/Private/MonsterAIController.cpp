@@ -5,6 +5,16 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
+// Initialize static array of fallback trace directions for surface detection
+const FVector AMonsterAIController::FallbackTraceDirections[6] = {
+	FVector::UpVector,
+	FVector::DownVector,
+	FVector::ForwardVector,
+	FVector::BackwardVector,
+	FVector::RightVector,
+	FVector::LeftVector
+};
+
 AMonsterAIController::AMonsterAIController()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -392,19 +402,13 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		{
 			// No surface found with current orientation, try multi-directional trace
 			// This helps when transitioning between faces of a column or complex geometry
+			// Note: This fallback is only used when the primary trace fails, keeping overhead minimal
 			bool bFoundSurface = false;
 			
-			// Try tracing in multiple directions to find adjacent surfaces
-			TArray<FVector> TraceDirections;
-			TraceDirections.Add(FVector::UpVector);
-			TraceDirections.Add(FVector::DownVector);
-			TraceDirections.Add(FVector::ForwardVector);
-			TraceDirections.Add(FVector::BackwardVector);
-			TraceDirections.Add(FVector::RightVector);
-			TraceDirections.Add(FVector::LeftVector);
-			
-			for (const FVector& TraceDir : TraceDirections)
+			// Try tracing in multiple directions using pre-allocated static array
+			for (int32 i = 0; i < 6; ++i)
 			{
+				const FVector& TraceDir = FallbackTraceDirections[i];
 				FVector MultiTraceStart = NextPosition + TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
 				FVector MultiTraceEnd = NextPosition - TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
 				

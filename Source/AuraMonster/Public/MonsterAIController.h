@@ -211,6 +211,9 @@ private:
 	/** Whether the monster is currently stopped at a crawl destination */
 	bool bIsStoppedAtCrawlDestination;
 
+	/** Static array of trace directions for multi-directional surface detection */
+	static const FVector FallbackTraceDirections[6];
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 
