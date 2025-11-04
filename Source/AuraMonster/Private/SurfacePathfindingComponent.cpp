@@ -70,12 +70,17 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 	// Try multiple random directions to find a valid surface location
 	const int32 MaxAttempts = 50;
 	
+	// Thresholds for surface type detection
+	const float HorizontalSurfaceThreshold = 0.7f; // Z component above this = horizontal surface
+	const float VerticalSurfaceThreshold = 0.3f;   // Z component below this = vertical surface
+	const float SurfaceTransitionThreshold = 0.5f; // Dot product below this = significant orientation change
+	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(CachedOwner);
 	
 	// Determine if we're on a horizontal or vertical surface
-	bool bOnHorizontalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) > 0.7f;
-	bool bOnVerticalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) < 0.3f;
+	bool bOnHorizontalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) > HorizontalSurfaceThreshold;
+	bool bOnVerticalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) < VerticalSurfaceThreshold;
 	
 	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 	{
@@ -92,7 +97,7 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 			FVector HorizontalBias = FVector(FMath::FRandRange(-1.0f, 1.0f), FMath::FRandRange(-1.0f, 1.0f), 0.0f);
 			HorizontalBias.Normalize();
 			
-			// Add slight downward/outward bias (50% chance to go down if on top surface)
+			// Add downward/outward bias (biased range creates tendency to move downward from top surfaces)
 			float VerticalBias = (CurrentSurfaceNormal.Z > 0.0f) ? FMath::FRandRange(-0.5f, 0.2f) : FMath::FRandRange(-0.2f, 0.5f);
 			HorizontalBias.Z = VerticalBias;
 			
@@ -148,9 +153,9 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 			{
 				float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, HitResult.Normal);
 				
-				// If the surface orientation changes significantly (dot < 0.5), 
+				// If the surface orientation changes significantly (below threshold), 
 				// it's a good transition candidate - accept it immediately
-				if (DotProduct < 0.5f)
+				if (DotProduct < SurfaceTransitionThreshold)
 				{
 					return true;
 				}
