@@ -94,18 +94,19 @@ AI controller that manages monster behavior:
 - `OnExitState(OldState)` - Event called when exiting a state
 
 **Idle Behavior Properties:**
-- `MinIdleDuration` (default: 2.0) - Minimum seconds to stay idle
-- `MaxIdleDuration` (default: 5.0) - Maximum seconds to stay idle
+- `MinIdleDuration` (default: 1.0) - Minimum seconds to stay idle
+- `MaxIdleDuration` (default: 3.0) - Maximum seconds to stay idle
 - `MinSubtleMovementInterval` (default: 2.0) - Minimum seconds between subtle movements
 - `MaxSubtleMovementInterval` (default: 6.0) - Maximum seconds between subtle movements
 - `BreathingCycleDuration` (default: 4.0) - Duration of one breathing cycle in seconds
-- `PatrolTransitionChance` (default: 0.7) - Probability (0.0-1.0) of transitioning to patrol after idle duration
+- `PatrolTransitionChance` (default: 0.85) - Probability (0.0-1.0) of transitioning to patrol after idle duration
 
 **Patrol Behavior Properties:**
 - `PatrolRange` (default: 1000.0) - Maximum distance from current position to select patrol destinations
-- `MinStopDuration` (default: 2.0) - Minimum seconds to wait at each patrol destination (to listen/look around)
-- `MaxStopDuration` (default: 5.0) - Maximum seconds to wait at each patrol destination (to listen/look around)
+- `MinStopDuration` (default: 0.5) - Minimum seconds to wait at each patrol destination (to listen/look around)
+- `MaxStopDuration` (default: 2.0) - Maximum seconds to wait at each patrol destination (to listen/look around)
 - `PatrolAcceptanceRadius` (default: 100.0) - How close the monster needs to get to the destination before considering it reached
+
 
 ## Installation
 

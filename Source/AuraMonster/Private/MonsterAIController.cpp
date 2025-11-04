@@ -13,17 +13,17 @@ AMonsterAIController::AMonsterAIController()
 	ControlledMonster = nullptr;
 
 	// Initialize idle behavior parameters with reasonable defaults
-	MinIdleDuration = 2.0f;
-	MaxIdleDuration = 5.0f;
+	MinIdleDuration = 1.0f;
+	MaxIdleDuration = 3.0f;
 	MinSubtleMovementInterval = 2.0f;
 	MaxSubtleMovementInterval = 6.0f;
 	BreathingCycleDuration = 4.0f;
-	PatrolTransitionChance = 0.7f;
+	PatrolTransitionChance = 0.85f;
 
 	// Initialize patrol behavior parameters with reasonable defaults
 	PatrolRange = 1000.0f;
-	MinStopDuration = 2.0f;
-	MaxStopDuration = 5.0f;
+	MinStopDuration = 0.5f;
+	MaxStopDuration = 2.0f;
 	PatrolAcceptanceRadius = 100.0f;
 
 	// Initialize timing variables
