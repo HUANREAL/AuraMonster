@@ -8,7 +8,7 @@ AuraMonster is a gameplay plugin that provides a foundation for creating AI-cont
 
 - **Idle** - Monster remains stationary
 - **Patrol (Standing)** - Monster patrols while walking upright
-- **Patrol (Crawling)** - Monster patrols using custom surface-aware pathfinding that allows crawling on floors, walls, and ceilings
+- **Patrol (Crawling)** - Monster patrols in a crawling posture
 
 ## Features
 

@@ -25,16 +25,6 @@ AMonsterAIController::AMonsterAIController()
 	MaxStopDuration = 5.0f;
 	PatrolAcceptanceRadius = 100.0f;
 
-	// Initialize crawling behavior parameters with reasonable defaults
-	SurfaceTransitionChance = 0.3f;
-	MinSurfaceTransitionInterval = 3.0f;
-	MaxSurfaceTransitionInterval = 8.0f;
-	MaxSurfaceAngle = 90.0f;
-	SurfaceSearchDistance = 500.0f;
-	MaxSurfaceSearchAttempts = 8;
-	SurfaceTransitionSearchRatio = 0.5f;
-	SurfaceTransitionAngleThreshold = 0.9f;
-
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
@@ -46,13 +36,6 @@ AMonsterAIController::AMonsterAIController()
 	CurrentStopTime = 0.0f;
 	TargetStopDuration = 0.0f;
 	bIsStoppedAtDestination = false;
-	
-	// Initialize crawling variables
-	TimeSinceSurfaceTransitionCheck = 0.0f;
-	NextSurfaceTransitionCheckTime = 0.0f;
-	CurrentCrawlingDestination = FVector::ZeroVector;
-	bHasCrawlingDestination = false;
-	CachedSurfaceOffsetDistance = 50.0f;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -71,15 +54,6 @@ void AMonsterAIController::BeginPlay()
 	
 	// Cache path following component reference
 	CachedPathFollowingComp = GetPathFollowingComponent();
-	
-	// Cache surface offset distance from controlled monster for performance
-	if (ControlledMonster)
-	{
-		CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
-	}
-	
-	// Pre-compute cosine of MaxSurfaceAngle for performance optimization
-	CachedMaxSurfaceAngleCos = FMath::Cos(FMath::DegreesToRadians(MaxSurfaceAngle));
 	
 	// Initialize NextSubtleMovementTime to prevent immediate trigger on first frame
 	NextSubtleMovementTime = GetValidatedRandomRange(MinSubtleMovementInterval, MaxSubtleMovementInterval);
@@ -297,232 +271,9 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
 {
-	if (!ControlledMonster)
-	{
-		return;
-	}
-
-	// Update surface transition timer
-	TimeSinceSurfaceTransitionCheck += DeltaTime;
-
-	// Check if we're currently stopped at a destination to listen/look around
-	if (bIsStoppedAtDestination)
-	{
-		CurrentStopTime += DeltaTime;
-		
-		// Check if we've waited long enough
-		if (CurrentStopTime >= TargetStopDuration)
-		{
-			// Done stopping, ready to move to next destination
-			bIsStoppedAtDestination = false;
-			CurrentStopTime = 0.0f;
-		}
-		else
-		{
-			// Still waiting, don't move yet
-			return;
-		}
-	}
-
-	// Attempt unpredictable surface transition mid-patrol (but not while stopped)
-	if (!bIsStoppedAtDestination && TimeSinceSurfaceTransitionCheck >= NextSurfaceTransitionCheckTime)
-	{
-		AttemptSurfaceTransition();
-		TimeSinceSurfaceTransitionCheck = 0.0f;
-		NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
-	}
-
-	// Check if we're currently moving to a destination
-	if (bHasCrawlingDestination)
-	{
-		FVector CurrentLocation = ControlledMonster->GetActorLocation();
-		float DistanceToDestination = FVector::Dist(CurrentLocation, CurrentCrawlingDestination);
-
-		// Check if we've reached the destination
-		if (DistanceToDestination <= PatrolAcceptanceRadius)
-		{
-			// We've reached destination, now stop to listen/look around
-			bIsStoppedAtDestination = true;
-			CurrentStopTime = 0.0f;
-			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
-			bHasCrawlingDestination = false;
-			
-			// Stop movement
-			StopMovement();
-			return;
-		}
-
-		// Continue moving toward destination
-		// Project movement direction onto the surface plane to ensure surface-relative movement
-		FVector DirectionToDestination = (CurrentCrawlingDestination - CurrentLocation).GetSafeNormal();
-		FVector SurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
-		FVector ProjectedDirection = FVector::VectorPlaneProject(DirectionToDestination, SurfaceNormal).GetSafeNormal();
-		
-		// Apply movement input
-		if (ControlledMonster->GetCharacterMovement())
-		{
-			ControlledMonster->AddMovementInput(ProjectedDirection, 1.0f);
-		}
-		
-		return;
-	}
-
-	// Need to find a new crawling destination on a surface
-	FVector NewDestination;
-	if (FindCrawlingSurfaceDestination(NewDestination))
-	{
-		CurrentCrawlingDestination = NewDestination;
-		bHasCrawlingDestination = true;
-	}
-}
-
-bool AMonsterAIController::FindCrawlingSurfaceDestination(FVector& OutDestination)
-{
-	if (!ControlledMonster || !GetWorld())
-	{
-		return false;
-	}
-
-	FVector CurrentLocation = ControlledMonster->GetActorLocation();
-	
-	// Compute trace directions relative to the monster's current orientation
-	const FVector TraceDirections[] = {
-		-ControlledMonster->GetActorUpVector(),    // Down relative to monster
-		ControlledMonster->GetActorForwardVector(), // Forward
-		ControlledMonster->GetActorUpVector(),      // Up relative to monster
-		ControlledMonster->GetActorRightVector(),   // Right
-		-ControlledMonster->GetActorRightVector(),  // Left
-		-ControlledMonster->GetActorForwardVector() // Backward
-	};
-
-	// Try multiple random directions to find a valid surface location
-	for (int32 Attempt = 0; Attempt < MaxSurfaceSearchAttempts; ++Attempt)
-	{
-		// Generate a random direction
-		FVector RandomDirection = FMath::VRand();
-		
-		// Generate search location (surface tracing will validate actual locations)
-		FVector SearchLocation = CurrentLocation + RandomDirection * SurfaceSearchDistance;
-		
-		// Trace to find surfaces in multiple directions
-		for (const FVector& TraceDir : TraceDirections)
-		{
-			FVector TraceStart = SearchLocation;
-			FVector TraceEnd = SearchLocation + TraceDir * SurfaceSearchDistance;
-			
-			FHitResult HitResult;
-			FCollisionQueryParams QueryParams;
-			QueryParams.AddIgnoredActor(ControlledMonster);
-			
-			bool bHit = GetWorld()->LineTraceSingleByChannel(
-				HitResult,
-				TraceStart,
-				TraceEnd,
-				ECC_Visibility,
-				QueryParams
-			);
-			
-			if (bHit)
-			{
-				// Check if the surface angle is within acceptable range by comparing dot product
-				// to cached cosine value (avoids expensive acos computation)
-				// Clamp dot product to prevent NaN from floating-point precision errors
-				FVector CurrentSurfaceNormal = ControlledMonster->GetCurrentSurfaceNormal();
-				float DotProduct = FMath::Clamp(FVector::DotProduct(HitResult.ImpactNormal, CurrentSurfaceNormal), -1.0f, 1.0f);
-				
-				if (DotProduct >= CachedMaxSurfaceAngleCos)
-				{
-					// Valid surface found - offset slightly from surface using cached value
-					OutDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
-					return true;
-				}
-			}
-		}
-	}
-	
-	// Fallback: use standard navigation if no surface found
-	if (CachedNavSystem)
-	{
-		FNavLocation ResultLocation;
-		bool bFoundLocation = CachedNavSystem->GetRandomReachablePointInRadius(CurrentLocation, PatrolRange, ResultLocation);
-		
-		if (bFoundLocation)
-		{
-			OutDestination = ResultLocation.Location;
-			return true;
-		}
-	}
-	
-	return false;
-}
-
-void AMonsterAIController::AttemptSurfaceTransition()
-{
-	// Check if we should attempt a surface transition
-	float RandomValue = FMath::FRand();
-	if (RandomValue >= SurfaceTransitionChance)
-	{
-		return; // No transition this time
-	}
-	
-	if (!ControlledMonster || !GetWorld())
-	{
-		return;
-	}
-	
-	FVector CurrentLocation = ControlledMonster->GetActorLocation();
-	FVector CurrentUpVector = ControlledMonster->GetCurrentSurfaceNormal();
-	
-	// Calculate search directions dynamically based on current character orientation
-	// to look for adjacent surfaces at different angles
-	FVector RightVector = ControlledMonster->GetActorRightVector();
-	FVector ForwardVector = ControlledMonster->GetActorForwardVector();
-	
-	// Search in perpendicular directions for wall/ceiling transitions
-	const FVector SearchDirections[] = {
-		RightVector,         // Right
-		-RightVector,        // Left
-		ForwardVector,       // Forward
-		-ForwardVector,      // Backward
-		-CurrentUpVector     // Down (opposite to up)
-	};
-	
-	for (const FVector& SearchDir : SearchDirections)
-	{
-		FVector TraceStart = CurrentLocation;
-		FVector TraceEnd = CurrentLocation + SearchDir * SurfaceSearchDistance * SurfaceTransitionSearchRatio;
-		
-		FHitResult HitResult;
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(ControlledMonster);
-		
-		bool bHit = GetWorld()->LineTraceSingleByChannel(
-			HitResult,
-			TraceStart,
-			TraceEnd,
-			ECC_Visibility,
-			QueryParams
-		);
-		
-		if (bHit)
-		{
-			// Check if this is a different surface
-			// Clamp dot product to prevent precision errors
-			float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentUpVector, HitResult.ImpactNormal), -1.0f, 1.0f);
-			
-			// If surface normal is significantly different, transition to it
-			// Compare raw dot product to detect genuinely different orientations
-			if (DotProduct < SurfaceTransitionAngleThreshold)
-			{
-				// Set new destination on the different surface using cached offset value
-				CurrentCrawlingDestination = HitResult.ImpactPoint + HitResult.ImpactNormal * CachedSurfaceOffsetDistance;
-				bHasCrawlingDestination = true;
-				bIsStoppedAtDestination = false;
-				CurrentStopTime = 0.0f;
-				return;
-			}
-		}
-	}
+	// Default patrol crawling behavior
+	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
+	// Similar to standing patrol but with different animation/movement style
 }
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
@@ -557,21 +308,6 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
-		
-		// Reset crawling-specific variables if entering crawling state
-		if (NewState == EMonsterBehaviorState::PatrolCrawling)
-		{
-			TimeSinceSurfaceTransitionCheck = 0.0f;
-			NextSurfaceTransitionCheckTime = GetValidatedRandomRange(MinSurfaceTransitionInterval, MaxSurfaceTransitionInterval);
-			bHasCrawlingDestination = false;
-			
-			// Refresh cached values
-			if (ControlledMonster)
-			{
-				CachedSurfaceOffsetDistance = ControlledMonster->GetSurfaceOffsetDistance();
-			}
-			CachedMaxSurfaceAngleCos = FMath::Cos(FMath::DegreesToRadians(MaxSurfaceAngle));
-		}
 	}
 }
 
