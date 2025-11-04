@@ -126,6 +126,26 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
 	float FallbackTraceDownDistance;
 
+	/** Minimum pitch angle for random direction generation during normal crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MinCrawlPitch;
+
+	/** Maximum pitch angle for random direction generation during normal crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MaxCrawlPitch;
+
+	/** Minimum pitch angle when transitioning between surfaces to favor vertical surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MinTransitionPitch;
+
+	/** Maximum pitch angle when transitioning between surfaces to favor vertical surfaces */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float MaxTransitionPitch;
+
+	/** Minimum distance multiplier (relative to PatrolRange) for crawl destinations */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MinCrawlDistanceMultiplier;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")

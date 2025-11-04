@@ -88,10 +88,15 @@ AI controller that manages monster behavior:
 **Patrol Crawling Behavior Properties:**
 - `CrawlSurfaceDetectionDistance` (default: 2000.0) - Maximum distance to check for crawlable surfaces
 - `SurfaceTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to a different surface type during crawling
-- `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with new surfaces
+- `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with new surfaces (set to 0 to disable)
 - `CrawlSurfaceOffset` (default: 50.0) - Distance offset from surface to place the monster when crawling
 - `FallbackTraceUpDistance` (default: 100.0) - Distance above current position for fallback floor detection
 - `FallbackTraceDownDistance` (default: 500.0) - Distance below current position for fallback floor detection
+- `MinCrawlPitch` (default: -45.0) - Minimum pitch angle for vertical exploration during normal crawling
+- `MaxCrawlPitch` (default: 45.0) - Maximum pitch angle for vertical exploration during normal crawling
+- `MinTransitionPitch` (default: -75.0) - Minimum pitch angle when transitioning between surfaces
+- `MaxTransitionPitch` (default: 75.0) - Maximum pitch angle when transitioning between surfaces
+- `MinCrawlDistanceMultiplier` (default: 0.3) - Minimum distance multiplier relative to PatrolRange
 
 ## Installation
 

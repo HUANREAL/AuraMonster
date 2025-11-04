@@ -32,6 +32,11 @@ AMonsterAIController::AMonsterAIController()
 	CrawlSurfaceOffset = 50.0f;
 	FallbackTraceUpDistance = 100.0f;
 	FallbackTraceDownDistance = 500.0f;
+	MinCrawlPitch = -45.0f;
+	MaxCrawlPitch = 45.0f;
+	MinTransitionPitch = -75.0f;
+	MaxTransitionPitch = 75.0f;
+	MinCrawlDistanceMultiplier = 0.3f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -478,24 +483,25 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 		// Generate a random direction
 		// Bias towards forward and sides for more natural movement
 		float Yaw = FMath::RandRange(-180.0f, 180.0f);
-		float Pitch = FMath::RandRange(-45.0f, 45.0f); // Allow some vertical exploration
+		float Pitch = FMath::RandRange(MinCrawlPitch, MaxCrawlPitch);
 		
 		// If transitioning between surfaces, bias towards different orientations (walls/ceilings)
 		if (bIsTransitioningBetweenSurfaces)
 		{
 			// Increase pitch range to favor vertical surfaces
-			Pitch = FMath::RandRange(-75.0f, 75.0f);
+			Pitch = FMath::RandRange(MinTransitionPitch, MaxTransitionPitch);
 		}
 		
 		FRotator RandomRotation(Pitch, Yaw, 0.0f);
 		FVector RandomDirection = RandomRotation.Vector();
 
-		// Random distance within patrol range
-		float Distance = FMath::RandRange(PatrolRange * 0.3f, PatrolRange);
+		// Random distance within patrol range using configurable minimum
+		float Distance = FMath::RandRange(PatrolRange * MinCrawlDistanceMultiplier, PatrolRange);
 		FVector TargetPoint = CurrentLocation + RandomDirection * Distance;
 
 		// Trace towards the target point to find a surface
 		// Use the random direction perpendicular to properly detect walls and ceilings
+		// The trace extends in both directions (0.5 * detection distance each way)
 		FVector TraceStart = TargetPoint + RandomDirection * (CrawlSurfaceDetectionDistance * 0.5f);
 		FVector TraceEnd = TargetPoint - RandomDirection * (CrawlSurfaceDetectionDistance * 0.5f);
 
@@ -553,6 +559,7 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 
 void AMonsterAIController::UpdateSurfaceAlignment(float DeltaTime)
 {
+	// Note: Setting SurfaceAlignmentSpeed to 0.0 or negative disables surface alignment
 	if (!ControlledMonster || SurfaceAlignmentSpeed <= 0.0f)
 	{
 		return;
