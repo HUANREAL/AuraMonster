@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MonsterCharacter.h"
+#include "MonsterAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -52,6 +53,18 @@ void AMonsterCharacter::SetBehaviorState(EMonsterBehaviorState NewState)
 		if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
 		{
 			MovementComp->MaxWalkSpeed = GetMovementSpeedForState(NewState);
+		}
+
+		// Notify AI Controller about state change if this was called directly
+		// (not from AI Controller's TransitionToState)
+		if (AMonsterAIController* AIController = Cast<AMonsterAIController>(GetController()))
+		{
+			// Only transition if AI Controller is not already in this state
+			// This prevents infinite loops when called from AIController->TransitionToState
+			if (AIController->GetCurrentState() != NewState)
+			{
+				AIController->TransitionToState(NewState);
+			}
 		}
 
 		// Notify about state change
