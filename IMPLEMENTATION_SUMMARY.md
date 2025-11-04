@@ -10,11 +10,7 @@ All behavior states have been successfully implemented:
   - Deliberate, heavy pace using normal navigation
   - Random reachable destinations within defined range
   - Occasional stops to listen or look around
-- ✅ **Patrol (Crawling)** - Monster patrols while crawling with advanced surface movement:
-  - Custom pathfinding system for full freedom of movement across floors, walls, and ceilings
-  - Automatic surface detection and smooth transitions between surfaces
-  - Unpredictable behavior with mid-patrol surface transitions
-  - Configurable surface detection, transition chance, and alignment speed
+- ✅ **Patrol (Crawling)** - Monster patrols while crawling (base implementation provided)
 
 ---
 
@@ -71,7 +67,7 @@ Features:
 - Blueprint-implementable behaviors:
   - `ExecuteIdleBehavior()` - Idle behavior logic with breathing and subtle movements
   - `ExecutePatrolStandingBehavior()` - Standing patrol logic with navigation and stops
-  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic with surface transitions
+  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic (base implementation)
 - State lifecycle events:
   - `OnEnterState()` - Called when entering a state
   - `OnExitState()` - Called when leaving a state
@@ -87,12 +83,6 @@ Features:
 - Stop duration range for listening/looking around
 - Acceptance radius for destination reach detection
 - Uses UE4 NavigationSystem for pathfinding
-
-**Patrol Crawling Behavior Configuration:**
-- Surface detection distance for finding crawlable surfaces
-- Surface transition chance for unpredictable behavior
-- Surface alignment speed for smooth orientation changes
-- Custom pathfinding for multi-surface movement (floors, walls, ceilings)
 
 ### 3. Documentation
 Comprehensive documentation covering:
@@ -173,13 +163,6 @@ Comprehensive documentation covering:
    - Minimal overhead per tick
    - State-based execution (only active state runs)
    - No unnecessary calculations
-   - Efficient surface detection with configurable parameters
-
-5. **Surface Crawling Implementation**
-   - Multi-directional ray tracing for surface detection
-   - Smooth interpolation for orientation changes
-   - Configurable surface detection distance and offset
-   - Unpredictable behavior through randomized surface transitions
 
 ---
 
@@ -187,11 +170,10 @@ Comprehensive documentation covering:
 
 ### Code Review ✅
 - Code review performed and passed
-- Improvements made based on feedback:
-  - Converted magic numbers to configurable properties (CrawlSurfaceOffset)
-  - Added clarifying comments for transition logic
-  - Documented performance considerations
-- Clean, readable, well-documented code
+- Formatting issues identified and fixed:
+  - Removed trailing whitespace
+  - Fixed inconsistent indentation
+- Clean, readable code
 
 ### Security Scan ✅
 - CodeQL security analysis performed
