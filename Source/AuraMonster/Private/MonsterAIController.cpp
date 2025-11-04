@@ -400,34 +400,40 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		
 		bool bFoundSurface = false;
 		
-		// First, try tracing along movement direction to detect surfaces ahead (walls, obstacles)
-		// This is critical for transitioning from floor to wall
-		FVector ForwardTraceStart = CurrentLocation;
-		FVector ForwardTraceEnd = NextPosition;
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
+		// First priority: trace to find the surface at the next position along current surface normal
+		// This maintains smooth movement along the current surface type
+		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
+		FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
+		FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
+		
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 		{
-			// Hit a surface in the movement direction (likely transitioning to a wall)
+			// Found a surface along current orientation - this is the preferred case
 			UpdatePositionOnSurface(HitResult);
 			bFoundSurface = true;
 		}
 		
-		// If no forward obstacle, trace to find the surface beneath/beside the new position
-		// This maintains contact with the current surface type
+		// Second priority: if no surface along current normal, try forward trace for transitions
+		// This handles floor-to-wall transitions and obstacles
 		if (!bFoundSurface)
 		{
-			FVector SurfaceCheckNormal = CurrentSurfaceNormal;
-			FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
-			FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
-			
-			if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+			FVector ForwardTraceStart = CurrentLocation;
+			FVector ForwardTraceEnd = NextPosition;
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
 			{
-				// Found a surface along current orientation
-				UpdatePositionOnSurface(HitResult);
-				bFoundSurface = true;
+				// Only use this hit if it's reasonably close to the intended movement distance
+				// This prevents teleporting to far-away surfaces
+				float HitDistance = FVector::Dist(CurrentLocation, HitResult.ImpactPoint);
+				if (HitDistance <= MovementDistance * 1.5f)
+				{
+					// Hit a surface in the movement direction (transitioning to a wall or obstacle)
+					UpdatePositionOnSurface(HitResult);
+					bFoundSurface = true;
+				}
 			}
 		}
 		
-		// If still no surface, try multi-directional trace for complex geometry
+		// Third priority: if still no surface, try multi-directional trace for complex geometry
 		if (!bFoundSurface)
 		{
 			const int32 NumTraceDirections = UE_ARRAY_COUNT(FallbackTraceDirections);
