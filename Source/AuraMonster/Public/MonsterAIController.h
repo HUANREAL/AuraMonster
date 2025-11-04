@@ -114,6 +114,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
 	float SurfaceAlignmentSpeed;
 
+	/** Distance offset from surface to place the monster when crawling */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float CrawlSurfaceOffset;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")

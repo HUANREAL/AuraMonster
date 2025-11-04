@@ -29,6 +29,7 @@ AMonsterAIController::AMonsterAIController()
 	CrawlSurfaceDetectionDistance = 2000.0f;
 	SurfaceTransitionChance = 0.3f;
 	SurfaceAlignmentSpeed = 5.0f;
+	CrawlSurfaceOffset = 50.0f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -331,8 +332,11 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			TargetCrawlStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
 			
 			// Potentially transition to a different surface
+			// Note: Surface transition logic can be extended in future to change target surface normal
 			if (FMath::FRand() < SurfaceTransitionChance)
 			{
+				// Mark that we should look for a surface with a different orientation
+				// Currently this just increases the chance of selecting varied destinations
 				bIsTransitioningBetweenSurfaces = true;
 			}
 			
@@ -343,6 +347,10 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Use the crawling speed from the character
 		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
 		FVector NewLocation = CurrentLocation + Direction * MovementSpeed * DeltaTime;
+		
+		// Note: Using SetActorLocation with sweep for collision detection
+		// For performance-critical scenarios, consider using CharacterMovementComponent
+		// or caching collision results
 		ControlledMonster->SetActorLocation(NewLocation, true);
 		
 		return;
@@ -463,8 +471,10 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(ControlledMonster);
 
-	// Try multiple random directions to find a crawlable surface
+	// Maximum number of attempts to find a crawlable surface
 	const int32 MaxAttempts = 8;
+	
+	// Try multiple random directions to find a crawlable surface
 	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 	{
 		// Generate a random direction
@@ -489,8 +499,8 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 			FVector SurfaceLocation = HitResult.ImpactPoint;
 			FVector SurfaceNormal = HitResult.ImpactNormal;
 
-			// Offset slightly from the surface
-			SurfaceLocation += SurfaceNormal * 50.0f;
+			// Offset slightly from the surface using configurable offset
+			SurfaceLocation += SurfaceNormal * CrawlSurfaceOffset;
 
 			// Check if we can trace a path to this location
 			FHitResult PathCheckHit;
@@ -512,8 +522,8 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 			FVector HitPoint = DirectHit.ImpactPoint;
 			FVector HitNormal = DirectHit.ImpactNormal;
 			
-			// Offset from the surface
-			OutLocation = HitPoint + HitNormal * 50.0f;
+			// Offset from the surface using configurable offset
+			OutLocation = HitPoint + HitNormal * CrawlSurfaceOffset;
 			OutSurfaceNormal = HitNormal;
 			return true;
 		}
@@ -526,7 +536,7 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 	FHitResult HitResult;
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 	{
-		OutLocation = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+		OutLocation = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
 		OutSurfaceNormal = HitResult.ImpactNormal;
 		return true;
 	}
