@@ -143,6 +143,18 @@ private:
 	UPROPERTY()
 	UPathFollowingComponent* CachedPathFollowingComp;
 
+	/** Current target location for surface-based crawling */
+	FVector CrawlingTargetLocation;
+
+	/** Whether we have a valid crawling target */
+	bool bHasCrawlingTarget;
+
+	/** Previous location for stuck detection */
+	FVector PreviousCrawlingLocation;
+
+	/** Time spent with minimal movement (for stuck detection) */
+	float StuckTime;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 };

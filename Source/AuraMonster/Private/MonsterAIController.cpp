@@ -2,6 +2,7 @@
 
 #include "MonsterAIController.h"
 #include "MonsterCharacter.h"
+#include "SurfacePathfindingComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
@@ -36,6 +37,12 @@ AMonsterAIController::AMonsterAIController()
 	CurrentStopTime = 0.0f;
 	TargetStopDuration = 0.0f;
 	bIsStoppedAtDestination = false;
+	
+	// Initialize crawling variables
+	CrawlingTargetLocation = FVector::ZeroVector;
+	bHasCrawlingTarget = false;
+	PreviousCrawlingLocation = FVector::ZeroVector;
+	StuckTime = 0.0f;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -276,9 +283,101 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
 {
-	// Default patrol crawling behavior
-	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
-	// Similar to standing patrol but with different animation/movement style
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Get the surface pathfinding component
+	USurfacePathfindingComponent* SurfacePathfinding = ControlledMonster->GetSurfacePathfinding();
+	if (!SurfacePathfinding)
+	{
+		return;
+	}
+
+	// Check if we're currently stopped at a destination to listen/look around
+	if (bIsStoppedAtDestination)
+	{
+		CurrentStopTime += DeltaTime;
+		
+		// Check if we've waited long enough
+		if (CurrentStopTime >= TargetStopDuration)
+		{
+			// Done stopping, ready to move to next destination
+			bIsStoppedAtDestination = false;
+			CurrentStopTime = 0.0f;
+			bHasCrawlingTarget = false; // Reset target so we pick a new one
+			StuckTime = 0.0f; // Reset stuck detection
+		}
+		else
+		{
+			// Still waiting, don't move yet
+			return;
+		}
+	}
+
+	// Check if we need to select a new target location
+	if (!bHasCrawlingTarget)
+	{
+		FVector CurrentLocation = ControlledMonster->GetActorLocation();
+		FVector TargetNormal;
+
+		// Use surface pathfinding to get a random surface location (floor, wall, or ceiling)
+		if (SurfacePathfinding->GetRandomSurfaceLocation(CurrentLocation, PatrolRange, CrawlingTargetLocation, TargetNormal))
+		{
+			bHasCrawlingTarget = true;
+			PreviousCrawlingLocation = CurrentLocation;
+			StuckTime = 0.0f;
+		}
+		else
+		{
+			// Failed to find a target, try again next tick
+			return;
+		}
+	}
+
+	// Detect if the monster is stuck (not making progress toward target)
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	float MovementDistance = (CurrentLocation - PreviousCrawlingLocation).Size();
+	
+	// If moving very little over time, consider it stuck
+	const float MinMovementThreshold = 10.0f; // Units per second
+	if (MovementDistance < MinMovementThreshold * DeltaTime)
+	{
+		StuckTime += DeltaTime;
+		
+		// If stuck for more than 2 seconds, abandon current target and pick a new one
+		if (StuckTime > 2.0f)
+		{
+			bHasCrawlingTarget = false;
+			StuckTime = 0.0f;
+			return; // Will pick new target on next tick
+		}
+	}
+	else
+	{
+		// Making progress, reset stuck timer
+		StuckTime = 0.0f;
+		PreviousCrawlingLocation = CurrentLocation;
+	}
+
+	// Move toward the target using surface-based movement
+	// This enables full freedom of movement across any surface
+	if (bHasCrawlingTarget)
+	{
+		float CrawlingSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
+		bool bStillMoving = SurfacePathfinding->MoveTowardsSurfaceLocation(CrawlingTargetLocation, DeltaTime, CrawlingSpeed);
+
+		if (!bStillMoving)
+		{
+			// Reached destination, stop to listen/look around
+			bIsStoppedAtDestination = true;
+			CurrentStopTime = 0.0f;
+			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			bHasCrawlingTarget = false;
+			StuckTime = 0.0f;
+		}
+	}
 }
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
@@ -313,6 +412,15 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
+		
+		// Reset crawling-specific variables
+		if (NewState == EMonsterBehaviorState::PatrolCrawling)
+		{
+			bHasCrawlingTarget = false;
+			CrawlingTargetLocation = FVector::ZeroVector;
+			StuckTime = 0.0f;
+			PreviousCrawlingLocation = FVector::ZeroVector;
+		}
 	}
 }
 

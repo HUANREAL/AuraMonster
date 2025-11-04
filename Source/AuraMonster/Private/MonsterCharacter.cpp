@@ -2,6 +2,7 @@
 
 #include "MonsterCharacter.h"
 #include "MonsterAIController.h"
+#include "SurfacePathfindingComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -16,6 +17,9 @@ AMonsterCharacter::AMonsterCharacter()
 	// Set default movement speeds
 	PatrolStandingSpeed = 300.0f;
 	PatrolCrawlingSpeed = 150.0f;
+
+	// Create and configure surface pathfinding component
+	SurfacePathfinding = CreateDefaultSubobject<USurfacePathfindingComponent>(TEXT("SurfacePathfinding"));
 }
 
 // Called when the game starts or when spawned

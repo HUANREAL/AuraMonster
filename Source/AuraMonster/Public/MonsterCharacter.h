@@ -7,6 +7,8 @@
 #include "MonsterBehaviorState.h"
 #include "MonsterCharacter.generated.h"
 
+class USurfacePathfindingComponent;
+
 UCLASS()
 class AURAMONSTER_API AMonsterCharacter : public ACharacter
 {
@@ -38,6 +40,10 @@ public:
 	/** Get the movement speed for the current behavior state */
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;
+
+	/** Get the surface pathfinding component */
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	USurfacePathfindingComponent* GetSurfacePathfinding() const { return SurfacePathfinding; }
 
 protected:
 	/** 
@@ -77,6 +83,10 @@ protected:
 	/** Movement speed when patrolling while crawling */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Movement")
 	float PatrolCrawlingSpeed;
+
+	/** Surface pathfinding component for crawling on walls and ceilings */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Components")
+	USurfacePathfindingComponent* SurfacePathfinding;
 
 	/** Called when behavior state changes */
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster")
