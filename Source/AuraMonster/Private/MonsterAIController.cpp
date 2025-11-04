@@ -379,12 +379,6 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Calculate trace distance for surface detection
 		const float TraceDistance = CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
 		
-		// Trace to find the surface beneath/beside the new position
-		// This allows the monster to continuously follow the surface contours
-		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
-		FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
-		FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
-		
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(ControlledMonster);
@@ -404,21 +398,38 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			TargetSurfaceNormal = SurfaceNormal;
 		};
 		
-		// Trace to find the actual surface at the new position
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		bool bFoundSurface = false;
+		
+		// First, try tracing along movement direction to detect surfaces ahead (walls, obstacles)
+		// This is critical for transitioning from floor to wall
+		FVector ForwardTraceStart = CurrentLocation;
+		FVector ForwardTraceEnd = NextPosition;
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
 		{
-			// Found a surface, stick to it
+			// Hit a surface in the movement direction (likely transitioning to a wall)
 			UpdatePositionOnSurface(HitResult);
+			bFoundSurface = true;
 		}
-		else
+		
+		// If no forward obstacle, trace to find the surface beneath/beside the new position
+		// This maintains contact with the current surface type
+		if (!bFoundSurface)
 		{
-			// No surface found with current orientation, try multi-directional trace
-			// This helps when transitioning between faces of a column or complex geometry
-			// Note: This fallback is only used when the primary trace fails, keeping overhead minimal
-			bool bFoundSurface = false;
+			FVector SurfaceCheckNormal = CurrentSurfaceNormal;
+			FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
+			FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
 			
-			// Try tracing in multiple directions using pre-allocated static array
-			// The loop will early exit as soon as a surface is found (break on line 432)
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+			{
+				// Found a surface along current orientation
+				UpdatePositionOnSurface(HitResult);
+				bFoundSurface = true;
+			}
+		}
+		
+		// If still no surface, try multi-directional trace for complex geometry
+		if (!bFoundSurface)
+		{
 			const int32 NumTraceDirections = UE_ARRAY_COUNT(FallbackTraceDirections);
 			for (int32 i = 0; i < NumTraceDirections; ++i)
 			{
@@ -434,13 +445,14 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 					break;
 				}
 			}
-			
-			// If still no surface found, move without surface constraint
-			// This can happen when moving through open space between surfaces
-			if (!bFoundSurface)
-			{
-				ControlledMonster->SetActorLocation(NextPosition);
-			}
+		}
+		
+		// If no surface found after all attempts, stay in current position to prevent disappearing
+		// This is safer than moving to an unconstrained position
+		if (!bFoundSurface)
+		{
+			// Don't move - wait for next frame to find a valid surface
+			// This prevents the monster from falling through geometry or disappearing
 		}
 		
 		return;
