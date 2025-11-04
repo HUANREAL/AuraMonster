@@ -24,6 +24,7 @@ The plugin implements three distinct behavior states for monsters:
    - Uses custom pathfinding system for full freedom of movement
    - Can crawl across floors, walls, and ceilings
    - Smooth transitions between surfaces
+   - Intelligent surface selection: climbs upward on walls, crawls down from columns
    - Mid-patrol surface switching for unpredictable behavior
    - Does not rely on Unreal Engine's navigation mesh
 
@@ -93,12 +94,12 @@ AI controller that manages monster behavior:
 - `OnExitState(OldState)` - Event called when exiting a state
 
 **Idle Behavior Properties:**
-- `MinIdleDuration` (default: 5.0) - Minimum seconds to stay idle
-- `MaxIdleDuration` (default: 15.0) - Maximum seconds to stay idle
+- `MinIdleDuration` (default: 2.0) - Minimum seconds to stay idle
+- `MaxIdleDuration` (default: 5.0) - Maximum seconds to stay idle
 - `MinSubtleMovementInterval` (default: 2.0) - Minimum seconds between subtle movements
 - `MaxSubtleMovementInterval` (default: 6.0) - Maximum seconds between subtle movements
 - `BreathingCycleDuration` (default: 4.0) - Duration of one breathing cycle in seconds
-- `PatrolTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to patrol after idle duration
+- `PatrolTransitionChance` (default: 0.7) - Probability (0.0-1.0) of transitioning to patrol after idle duration
 
 **Patrol Behavior Properties:**
 - `PatrolRange` (default: 1000.0) - Maximum distance from current position to select patrol destinations
