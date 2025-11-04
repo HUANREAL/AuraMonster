@@ -330,10 +330,6 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 	// Check if we're currently moving to a crawl destination
 	if (bIsMovingToCrawlDestination)
 	{
-		// Move towards the crawling destination manually for precise control
-		FVector CurrentLocation = ControlledMonster->GetActorLocation();
-		FVector Direction = (CrawlingDestination - CurrentLocation).GetSafeNormal();
-		
 		// Check if we've reached the destination
 		if (HasReachedCrawlDestination())
 		{
@@ -355,11 +351,87 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			return;
 		}
 		
-		// Continue moving towards destination
-		// Use AddMovementInput for efficient movement with physics and navigation
-		// AddMovementInput expects a normalized direction and scales by MaxWalkSpeed
-		// The character movement component will handle collision and physics
-		ControlledMonster->AddMovementInput(Direction, 1.0f);
+		// Move towards the crawling destination with surface-aware movement
+		FVector CurrentLocation = ControlledMonster->GetActorLocation();
+		
+		// Calculate movement direction towards destination
+		FVector ToDestination = (CrawlingDestination - CurrentLocation).GetSafeNormal();
+		
+		// Get movement speed for crawling state
+		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
+		float MovementDistance = MovementSpeed * DeltaTime;
+		
+		// Calculate the next position
+		FVector NextPosition = CurrentLocation + ToDestination * MovementDistance;
+		
+		// Trace to find the surface beneath/beside the new position
+		// This allows the monster to continuously follow the surface contours
+		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
+		FVector TraceStart = NextPosition + SurfaceCheckNormal * CrawlSurfaceDetectionDistance * 0.5f;
+		FVector TraceEnd = NextPosition - SurfaceCheckNormal * CrawlSurfaceDetectionDistance * 0.5f;
+		
+		FHitResult HitResult;
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(ControlledMonster);
+		
+		// Trace to find the actual surface at the new position
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		{
+			// Found a surface, stick to it
+			FVector SurfacePoint = HitResult.ImpactPoint;
+			FVector SurfaceNormal = HitResult.ImpactNormal;
+			
+			// Update position to be on the surface with proper offset
+			FVector NewLocation = SurfacePoint + SurfaceNormal * CrawlSurfaceOffset;
+			ControlledMonster->SetActorLocation(NewLocation);
+			
+			// Update target surface normal for smooth alignment
+			TargetSurfaceNormal = SurfaceNormal;
+		}
+		else
+		{
+			// No surface found with current orientation, try multi-directional trace
+			// This helps when transitioning between faces of a column or complex geometry
+			bool bFoundSurface = false;
+			
+			// Try tracing in multiple directions to find adjacent surfaces
+			TArray<FVector> TraceDirections;
+			TraceDirections.Add(FVector::UpVector);
+			TraceDirections.Add(FVector::DownVector);
+			TraceDirections.Add(FVector::ForwardVector);
+			TraceDirections.Add(FVector::BackwardVector);
+			TraceDirections.Add(FVector::RightVector);
+			TraceDirections.Add(FVector::LeftVector);
+			
+			for (const FVector& TraceDir : TraceDirections)
+			{
+				FVector MultiTraceStart = NextPosition + TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
+				FVector MultiTraceEnd = NextPosition - TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
+				
+				if (GetWorld()->LineTraceSingleByChannel(HitResult, MultiTraceStart, MultiTraceEnd, ECC_Visibility, QueryParams))
+				{
+					// Found a surface
+					FVector SurfacePoint = HitResult.ImpactPoint;
+					FVector SurfaceNormal = HitResult.ImpactNormal;
+					
+					// Update position to be on the surface with proper offset
+					FVector NewLocation = SurfacePoint + SurfaceNormal * CrawlSurfaceOffset;
+					ControlledMonster->SetActorLocation(NewLocation);
+					
+					// Update target surface normal for smooth alignment
+					TargetSurfaceNormal = SurfaceNormal;
+					bFoundSurface = true;
+					break;
+				}
+			}
+			
+			// If still no surface found, move without surface constraint
+			// This can happen when moving through open space between surfaces
+			if (!bFoundSurface)
+			{
+				ControlledMonster->SetActorLocation(NextPosition);
+			}
+		}
 		
 		return;
 	}
@@ -577,6 +649,17 @@ void AMonsterAIController::UpdateSurfaceAlignment(float DeltaTime)
 	// The "up" vector should align with the surface normal
 	FRotator CurrentRotation = ControlledMonster->GetActorRotation();
 	FVector ForwardVector = CurrentRotation.Vector();
+	
+	// If moving towards a crawl destination, also consider the movement direction
+	if (bIsMovingToCrawlDestination)
+	{
+		FVector ToDestination = (CrawlingDestination - ControlledMonster->GetActorLocation()).GetSafeNormal();
+		if (!ToDestination.IsNearlyZero())
+		{
+			// Blend current forward with destination direction for smoother turning
+			ForwardVector = FMath::VInterpTo(ForwardVector, ToDestination, DeltaTime, SurfaceAlignmentSpeed * 0.5f);
+		}
+	}
 	
 	// Project forward vector onto the surface plane
 	FVector ProjectedForward = ForwardVector - CurrentSurfaceNormal * FVector::DotProduct(ForwardVector, CurrentSurfaceNormal);
