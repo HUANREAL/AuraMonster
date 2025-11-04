@@ -75,24 +75,9 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 	
 	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 	{
-		FVector RandomDirection;
-		
-		// For the first half of attempts, bias toward downward/horizontal directions
-		// This helps when on top of structures to find vertical walls and ground
-		if (Attempt < MaxAttempts / 2)
-		{
-			// Generate direction with downward bias
-			RandomDirection.X = FMath::FRandRange(-1.0f, 1.0f);
-			RandomDirection.Y = FMath::FRandRange(-1.0f, 1.0f);
-			RandomDirection.Z = FMath::FRandRange(-1.0f, 0.3f); // Bias downward
-			RandomDirection.Normalize();
-		}
-		else
-		{
-			// Use completely random direction for remaining attempts
-			RandomDirection = FMath::VRand();
-			RandomDirection.Normalize();
-		}
+		// Generate a random direction
+		FVector RandomDirection = FMath::VRand();
+		RandomDirection.Normalize();
 		
 		// Scale by range - use full range to reach distant surfaces
 		float RandomDistance = FMath::RandRange(Range * 0.5f, Range);
@@ -204,37 +189,11 @@ bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& Tar
 	}
 	else
 	{
-		// No surface hit forward - we might be approaching an edge
-		// Try detecting surface at desired location first
+		// No surface hit forward, try detecting surface nearby
 		FVector NearestSurfaceLocation, NearestSurfaceNormal;
 		if (DetectSurface(DesiredLocation, NearestSurfaceLocation, NearestSurfaceNormal))
 		{
-			// Found a surface at desired location
-			// Check if this represents an edge transition (e.g., from top to side of column)
-			if (bIsOnSurface)
-			{
-				float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, NearestSurfaceNormal);
-				// If the normals are significantly different, this is likely an edge transition
-				if (FMath::Abs(DotProduct) < 0.7f) // Angle > ~45 degrees
-				{
-					// This is an edge transition - move carefully
-					// Use the desired location to move toward the edge, then snap to new surface
-					FVector EdgeLocation = CurrentLocation + DirectionToTarget * MovementThisFrame * 0.5f;
-					
-					// Try to find surface from this edge position
-					FVector EdgeSurfaceLocation, EdgeSurfaceNormal;
-					if (DetectSurface(EdgeLocation, EdgeSurfaceLocation, EdgeSurfaceNormal))
-					{
-						CachedOwner->SetActorLocation(EdgeSurfaceLocation);
-						CurrentSurfaceNormal = EdgeSurfaceNormal;
-						bIsOnSurface = true;
-						AlignToSurface(EdgeSurfaceNormal, DeltaTime);
-						return true;
-					}
-				}
-			}
-			
-			// Normal surface detection - snap to detected surface
+			// Snap to detected surface
 			CachedOwner->SetActorLocation(NearestSurfaceLocation);
 			CurrentSurfaceNormal = NearestSurfaceNormal;
 			bIsOnSurface = true;
@@ -244,22 +203,9 @@ bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& Tar
 		}
 		else
 		{
-			// No surface found at desired location either
-			// Try detecting from current location with extended range (for edge cases)
-			if (DetectSurface(CurrentLocation, NearestSurfaceLocation, NearestSurfaceNormal))
-			{
-				// Stay attached to current surface if found
-				CachedOwner->SetActorLocation(NearestSurfaceLocation);
-				CurrentSurfaceNormal = NearestSurfaceNormal;
-				bIsOnSurface = true;
-				AlignToSurface(NearestSurfaceNormal, DeltaTime);
-			}
-			else
-			{
-				// No surface found anywhere, just move normally
-				CachedOwner->SetActorLocation(DesiredLocation);
-				bIsOnSurface = false;
-			}
+			// No surface found, just move normally
+			CachedOwner->SetActorLocation(DesiredLocation);
+			bIsOnSurface = false;
 		}
 	}
 
