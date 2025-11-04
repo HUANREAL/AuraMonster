@@ -13,17 +13,17 @@ AMonsterAIController::AMonsterAIController()
 	ControlledMonster = nullptr;
 
 	// Initialize idle behavior parameters with reasonable defaults
-	MinIdleDuration = 5.0f;
-	MaxIdleDuration = 15.0f;
+	MinIdleDuration = 1.0f;
+	MaxIdleDuration = 3.0f;
 	MinSubtleMovementInterval = 2.0f;
 	MaxSubtleMovementInterval = 6.0f;
 	BreathingCycleDuration = 4.0f;
-	PatrolTransitionChance = 0.3f;
+	PatrolTransitionChance = 0.85f;
 
 	// Initialize patrol behavior parameters with reasonable defaults
 	PatrolRange = 1000.0f;
-	MinStopDuration = 2.0f;
-	MaxStopDuration = 5.0f;
+	MinStopDuration = 0.5f;
+	MaxStopDuration = 2.0f;
 	PatrolAcceptanceRadius = 100.0f;
 
 	// Initialize timing variables
@@ -43,6 +43,9 @@ AMonsterAIController::AMonsterAIController()
 	bHasCrawlingTarget = false;
 	PreviousCrawlingLocation = FVector::ZeroVector;
 	StuckTime = 0.0f;
+	
+	// Initialize patrol variables
+	FailedNavAttempts = 0;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -171,8 +174,9 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		float RandomValue = FMath::FRand();
 		if (RandomValue < PatrolTransitionChance)
 		{
-			// Randomly choose between standing and crawling patrol
-			EMonsterBehaviorState NewState = (FMath::FRand() < 0.5f) 
+			// Prefer standing patrol over crawling patrol (70% standing, 30% crawling)
+			// Standing patrol is more natural and easier to see for most environments
+			EMonsterBehaviorState NewState = (FMath::FRand() < 0.7f) 
 				? EMonsterBehaviorState::PatrolStanding 
 				: EMonsterBehaviorState::PatrolCrawling;
 			TransitionToState(NewState);
@@ -251,6 +255,14 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	// Need to select a new random patrol destination using cached navigation system
 	if (!CachedNavSystem)
 	{
+		// No navigation system available - fall back to crawling mode after a few attempts
+		FailedNavAttempts++;
+		if (FailedNavAttempts >= 5)
+		{
+			// Navigation not available, switch to crawling mode which doesn't require navmesh
+			TransitionToState(EMonsterBehaviorState::PatrolCrawling);
+			FailedNavAttempts = 0;
+		}
 		return;
 	}
 
@@ -266,6 +278,9 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		// Move to the new patrol destination with deliberate, heavy pace
 		// The movement speed is configured via PatrolStandingSpeed property in AMonsterCharacter
 		MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+		
+		// Reset failed attempts counter on success
+		FailedNavAttempts = 0;
 	}
 	else
 	{
@@ -275,6 +290,19 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		if (bFoundCloserLocation)
 		{
 			MoveToLocation(CloserResultLocation.Location, PatrolAcceptanceRadius);
+			FailedNavAttempts = 0;
+		}
+		else
+		{
+			// Failed to find location even with smaller radius
+			FailedNavAttempts++;
+			
+			// After multiple failures, switch to crawling mode which doesn't need navmesh
+			if (FailedNavAttempts >= 10)
+			{
+				TransitionToState(EMonsterBehaviorState::PatrolCrawling);
+				FailedNavAttempts = 0;
+			}
 		}
 		// If still can't find a location, the monster will try again on the next tick
 		// This prevents getting stuck while allowing for environmental constraints
@@ -346,8 +374,9 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 	{
 		StuckTime += DeltaTime;
 		
-		// If stuck for more than 2 seconds, abandon current target and pick a new one
-		if (StuckTime > 2.0f)
+		// If stuck for more than 0.5 seconds, abandon current target and pick a new one
+		// Shorter timeout for crawling mode to keep the monster more active
+		if (StuckTime > 0.5f)
 		{
 			bHasCrawlingTarget = false;
 			StuckTime = 0.0f;
@@ -371,9 +400,11 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		if (!bStillMoving)
 		{
 			// Reached destination, stop to listen/look around
+			// Use shorter stop duration for crawling mode to keep it more active
 			bIsStoppedAtDestination = true;
 			CurrentStopTime = 0.0f;
-			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			// Crawling mode: 0.2-0.8 seconds (shorter than standing patrol's 0.5-2s)
+			TargetStopDuration = FMath::RandRange(0.2f, 0.8f);
 			bHasCrawlingTarget = false;
 			StuckTime = 0.0f;
 		}
@@ -412,6 +443,12 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
+		
+		// Reset standing patrol specific variables
+		if (NewState == EMonsterBehaviorState::PatrolStanding)
+		{
+			FailedNavAttempts = 0;
+		}
 		
 		// Reset crawling-specific variables
 		if (NewState == EMonsterBehaviorState::PatrolCrawling)

@@ -36,8 +36,8 @@ You can customize the patrol behavior by configuring properties in the AI Contro
 
 **In BP_MyMonsterAI Details Panel (Monster AI | Patrol section):**
 - `Patrol Range`: 1000.0 (maximum distance for patrol destinations)
-- `Min Stop Duration`: 2.0 (minimum seconds to stop and listen)
-- `Max Stop Duration`: 5.0 (maximum seconds to stop and listen)
+- `Min Stop Duration`: 0.5 (minimum seconds to stop and listen)
+- `Max Stop Duration`: 2.0 (maximum seconds to stop and listen)
 - `Patrol Acceptance Radius`: 100.0 (how close to get to destination)
 
 **To override patrol behavior with custom logic:**
@@ -70,12 +70,12 @@ You can customize the patrol behavior by configuring properties in the AI Contro
 **Step 1: Configure Idle Behavior in BP_MyMonsterAI**
 1. Open "BP_MyMonsterAI"
 2. In Details panel, find "Monster AI | Idle" section:
-   - `Min Idle Duration`: 5.0 (minimum seconds to stay idle)
-   - `Max Idle Duration`: 15.0 (maximum seconds to stay idle)
+   - `Min Idle Duration`: 1.0 (minimum seconds to stay idle)
+   - `Max Idle Duration`: 3.0 (maximum seconds to stay idle)
    - `Min Subtle Movement Interval`: 2.0 (min seconds between twitches)
    - `Max Subtle Movement Interval`: 6.0 (max seconds between twitches)
    - `Breathing Cycle Duration`: 4.0 (one breath cycle in seconds)
-   - `Patrol Transition Chance`: 0.3 (30% chance to patrol after idle)
+   - `Patrol Transition Chance`: 0.85 (85% chance to patrol after idle)
 
 **Step 2: Implement Animation Events in BP_MyMonster**
 

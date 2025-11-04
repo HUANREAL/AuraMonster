@@ -68,16 +68,67 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 	}
 
 	// Try multiple random directions to find a valid surface location
-	const int32 MaxAttempts = 30;
+	const int32 MaxAttempts = 50;
+	
+	// Thresholds for surface type detection
+	const float HorizontalSurfaceThreshold = 0.7f; // Z component above this = horizontal surface
+	const float VerticalSurfaceThreshold = 0.3f;   // Z component below this = vertical surface
+	const float SurfaceTransitionThreshold = 0.5f; // Dot product below this = significant orientation change
 	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(CachedOwner);
 	
+	// Determine if we're on a horizontal or vertical surface
+	bool bOnHorizontalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) > HorizontalSurfaceThreshold;
+	bool bOnVerticalSurface = bIsOnSurface && FMath::Abs(CurrentSurfaceNormal.Z) < VerticalSurfaceThreshold;
+	
 	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 	{
-		// Generate a random direction
-		FVector RandomDirection = FMath::VRand();
-		RandomDirection.Normalize();
+		// Generate a random direction with biases based on current surface
+		FVector RandomDirection;
+		
+		if (bOnHorizontalSurface)
+		{
+			// On horizontal surface (floor/ceiling) - bias toward edges and downward/outward
+			// This helps crawl down from columns onto vertical faces
+			RandomDirection = FMath::VRand();
+			
+			// Add bias toward horizontal movement (to reach edges) with some downward component
+			FVector HorizontalBias = FVector(FMath::FRandRange(-1.0f, 1.0f), FMath::FRandRange(-1.0f, 1.0f), 0.0f);
+			HorizontalBias.Normalize();
+			
+			// Add downward/outward bias (biased range creates tendency to move downward from top surfaces)
+			float VerticalBias = (CurrentSurfaceNormal.Z > 0.0f) ? FMath::FRandRange(-0.5f, 0.2f) : FMath::FRandRange(-0.2f, 0.5f);
+			HorizontalBias.Z = VerticalBias;
+			
+			// Blend random with bias (60% bias, 40% random for variety)
+			RandomDirection = (RandomDirection * 0.4f + HorizontalBias * 0.6f);
+			RandomDirection.Normalize();
+		}
+		else if (bOnVerticalSurface)
+		{
+			// On vertical surface (wall) - bias upward to climb higher
+			// This helps the monster climb up walls more often
+			RandomDirection = FMath::VRand();
+			
+			// Strong upward bias (70% of the time)
+			if (FMath::FRand() < 0.7f)
+			{
+				// Create upward-biased direction
+				FVector UpwardBias = FVector(FMath::FRandRange(-0.3f, 0.3f), FMath::FRandRange(-0.3f, 0.3f), FMath::FRandRange(0.5f, 1.0f));
+				UpwardBias.Normalize();
+				
+				// Blend with some randomness
+				RandomDirection = (RandomDirection * 0.3f + UpwardBias * 0.7f);
+				RandomDirection.Normalize();
+			}
+		}
+		else
+		{
+			// Not on a clear surface type, use random direction
+			RandomDirection = FMath::VRand();
+			RandomDirection.Normalize();
+		}
 		
 		// Scale by range - use full range to reach distant surfaces
 		float RandomDistance = FMath::RandRange(Range * 0.5f, Range);
@@ -95,6 +146,20 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 			
 			// Move the location slightly away from the surface to avoid being embedded
 			OutLocation += OutNormal * 10.0f;
+			
+			// Prefer surfaces that change orientation (e.g., floor to wall transitions)
+			// This helps with crawling down from columns
+			if (bIsOnSurface)
+			{
+				float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, HitResult.Normal);
+				
+				// If the surface orientation changes significantly (below threshold), 
+				// it's a good transition candidate - accept it immediately
+				if (DotProduct < SurfaceTransitionThreshold)
+				{
+					return true;
+				}
+			}
 			
 			return true;
 		}
