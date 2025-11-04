@@ -173,6 +173,13 @@ Comprehensive documentation covering:
    - Minimal overhead per tick
    - State-based execution (only active state runs)
    - No unnecessary calculations
+   - Efficient surface detection with configurable parameters
+
+5. **Surface Crawling Implementation**
+   - Multi-directional ray tracing for surface detection
+   - Smooth interpolation for orientation changes
+   - Configurable surface detection distance and offset
+   - Unpredictable behavior through randomized surface transitions
 
 ---
 
@@ -180,10 +187,11 @@ Comprehensive documentation covering:
 
 ### Code Review ✅
 - Code review performed and passed
-- Formatting issues identified and fixed:
-  - Removed trailing whitespace
-  - Fixed inconsistent indentation
-- Clean, readable code
+- Improvements made based on feedback:
+  - Converted magic numbers to configurable properties (CrawlSurfaceOffset)
+  - Added clarifying comments for transition logic
+  - Documented performance considerations
+- Clean, readable, well-documented code
 
 ### Security Scan ✅
 - CodeQL security analysis performed
