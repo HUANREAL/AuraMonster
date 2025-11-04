@@ -68,22 +68,34 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 	}
 
 	// Try multiple random directions to find a valid surface location
-	const int32 MaxAttempts = 20;
+	const int32 MaxAttempts = 30;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(CachedOwner);
+	
 	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 	{
 		// Generate a random direction
 		FVector RandomDirection = FMath::VRand();
+		RandomDirection.Normalize();
 		
-		// Scale by range
-		FVector RandomOffset = RandomDirection * FMath::RandRange(Range * 0.3f, Range);
-		FVector TestLocation = OriginLocation + RandomOffset;
-
-		// Try to find a surface near this test location
-		FVector HitLocation, HitNormal;
-		if (DetectSurface(TestLocation, HitLocation, HitNormal))
+		// Scale by range - use full range to reach distant surfaces
+		float RandomDistance = FMath::RandRange(Range * 0.5f, Range);
+		
+		// Cast a ray from origin in the random direction to find surfaces
+		FVector TraceStart = OriginLocation;
+		FVector TraceEnd = OriginLocation + RandomDirection * RandomDistance;
+		
+		FHitResult HitResult;
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 		{
-			OutLocation = HitLocation;
-			OutNormal = HitNormal;
+			// Found a surface along this ray
+			OutLocation = HitResult.Location;
+			OutNormal = HitResult.Normal;
+			
+			// Move the location slightly away from the surface to avoid being embedded
+			OutLocation += OutNormal * 10.0f;
+			
 			return true;
 		}
 	}
@@ -93,7 +105,7 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 
 bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& TargetLocation, float DeltaTime, float Speed)
 {
-	if (!CachedOwner)
+	if (!CachedOwner || !GetWorld())
 	{
 		return false;
 	}
@@ -112,42 +124,57 @@ bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& Tar
 	DirectionToTarget.Normalize();
 
 	// Calculate movement for this frame
-	float MovementThisFrame = Speed * DeltaTime;
-	FVector NewLocation = CurrentLocation + DirectionToTarget * MovementThisFrame;
+	float MovementThisFrame = FMath::Min(Speed * DeltaTime, DistanceToTarget);
+	FVector DesiredLocation = CurrentLocation + DirectionToTarget * MovementThisFrame;
 
-	// Detect surface at new location and adjust to stay on surface
-	FVector SurfaceLocation, SurfaceNormal;
-	if (DetectSurface(NewLocation, SurfaceLocation, SurfaceNormal))
+	// Instead of using DetectSurface which finds closest, do a directional trace
+	// toward the target to find surfaces along the path
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(CachedOwner);
+	
+	// First, try tracing toward the desired location
+	FHitResult ForwardHit;
+	bool bHitForward = GetWorld()->LineTraceSingleByChannel(
+		ForwardHit, 
+		CurrentLocation, 
+		DesiredLocation + DirectionToTarget * SurfaceDetectionRange,
+		ECC_Visibility, 
+		QueryParams
+	);
+	
+	if (bHitForward && ForwardHit.bBlockingHit)
 	{
-		// Snap to surface
+		// Found a surface along the path to target
+		FVector SurfaceLocation = ForwardHit.Location + ForwardHit.Normal * 10.0f;
+		FVector SurfaceNormal = ForwardHit.Normal;
+		
 		CachedOwner->SetActorLocation(SurfaceLocation);
 		CurrentSurfaceNormal = SurfaceNormal;
 		bIsOnSurface = true;
-
+		
 		// Align to new surface
 		AlignToSurface(SurfaceNormal, DeltaTime);
-
-		// Check if we should attempt a surface transition for unpredictability
-		if (ShouldAttemptSurfaceTransition())
-		{
-			// Calculate angle between current and new surface
-			// Clamp dot product to avoid NaN from floating point precision errors
-			float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentSurfaceNormal, SurfaceNormal), -1.0f, 1.0f);
-			float AngleDifference = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
-			
-			// Only transition if angle difference is significant
-			if (AngleDifference >= MinTransitionAngle)
-			{
-				// This creates the unpredictable surface-switching behavior
-				CurrentSurfaceNormal = SurfaceNormal;
-			}
-		}
 	}
 	else
 	{
-		// No surface found, just move normally
-		CachedOwner->SetActorLocation(NewLocation);
-		bIsOnSurface = false;
+		// No surface hit forward, try detecting surface nearby
+		FVector NearestSurfaceLocation, NearestSurfaceNormal;
+		if (DetectSurface(DesiredLocation, NearestSurfaceLocation, NearestSurfaceNormal))
+		{
+			// Snap to detected surface
+			CachedOwner->SetActorLocation(NearestSurfaceLocation);
+			CurrentSurfaceNormal = NearestSurfaceNormal;
+			bIsOnSurface = true;
+			
+			// Align to new surface
+			AlignToSurface(NearestSurfaceNormal, DeltaTime);
+		}
+		else
+		{
+			// No surface found, just move normally
+			CachedOwner->SetActorLocation(DesiredLocation);
+			bIsOnSurface = false;
+		}
 	}
 
 	return true; // Still moving
@@ -180,8 +207,8 @@ bool USurfacePathfindingComponent::DetectSurface(const FVector& Location, FVecto
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(CachedOwner);
 
-	// Find the closest surface in any direction
-	float ClosestDistance = SurfaceDetectionRange + 1.0f;
+	// Find surfaces and score them based on distance and alignment with current normal
+	float BestScore = -1.0f;
 	bool bFoundSurface = false;
 
 	for (const FVector& Direction : TraceDirections)
@@ -193,10 +220,27 @@ bool USurfacePathfindingComponent::DetectSurface(const FVector& Location, FVecto
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 		{
 			float HitDistance = (HitResult.Location - Location).Size();
-			if (HitDistance < ClosestDistance)
+			
+			// Score based on distance (closer is better) and alignment with current surface
+			// This helps maintain continuity when moving along surfaces
+			float DistanceScore = 1.0f - (HitDistance / SurfaceDetectionRange);
+			
+			// If we're on a surface, prefer surfaces that are similar to current orientation
+			float AlignmentScore = 0.5f; // Neutral score if no current surface
+			if (bIsOnSurface)
 			{
-				ClosestDistance = HitDistance;
-				OutHitLocation = HitResult.Location;
+				float DotProduct = FVector::DotProduct(CurrentSurfaceNormal, HitResult.Normal);
+				// Positive dot = similar orientation, negative = opposite
+				AlignmentScore = (DotProduct + 1.0f) * 0.5f; // Map [-1,1] to [0,1]
+			}
+			
+			// Combined score: 70% distance, 30% alignment
+			float Score = (DistanceScore * 0.7f) + (AlignmentScore * 0.3f);
+			
+			if (Score > BestScore)
+			{
+				BestScore = Score;
+				OutHitLocation = HitResult.Location + HitResult.Normal * 10.0f; // Offset from surface
 				OutHitNormal = HitResult.Normal;
 				bFoundSurface = true;
 			}
