@@ -39,6 +39,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;
 
+	/** Called when a subtle neck twitch should be animated */
+	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
+	void OnNeckTwitch();
+	virtual void OnNeckTwitch_Implementation();
+
+	/** Called when a subtle finger shift should be animated */
+	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
+	void OnFingerShift();
+	virtual void OnFingerShift_Implementation();
+
+	/** Called to update breathing animation intensity (0.0 to 1.0) */
+	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
+	void OnBreathingUpdate(float BreathingIntensity);
+	virtual void OnBreathingUpdate_Implementation(float BreathingIntensity);
+
 protected:
 	/** Current behavior state of the monster */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster")
@@ -56,19 +71,4 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster")
 	void OnBehaviorStateChanged(EMonsterBehaviorState OldState, EMonsterBehaviorState NewState);
 	virtual void OnBehaviorStateChanged_Implementation(EMonsterBehaviorState OldState, EMonsterBehaviorState NewState);
-
-	/** Called when a subtle neck twitch should be animated */
-	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
-	void OnNeckTwitch();
-	virtual void OnNeckTwitch_Implementation();
-
-	/** Called when a subtle finger shift should be animated */
-	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
-	void OnFingerShift();
-	virtual void OnFingerShift_Implementation();
-
-	/** Called to update breathing animation intensity (0.0 to 1.0) */
-	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
-	void OnBreathingUpdate(float BreathingIntensity);
-	virtual void OnBreathingUpdate_Implementation(float BreathingIntensity);
 };
