@@ -373,7 +373,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
 		float MovementDistance = MovementSpeed * DeltaTime;
 		
-		// Calculate the next position
+		// Calculate the next position in world space
 		FVector NextPosition = CurrentLocation + ToDestination * MovementDistance;
 		
 		// Calculate trace distance for surface detection
@@ -383,83 +383,60 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(ControlledMonster);
 		
-		// Lambda to update position on detected surface
-		// Captures this pointer to access member variables (ControlledMonster, TargetSurfaceNormal, CrawlSurfaceOffset)
-		auto UpdatePositionOnSurface = [this](const FHitResult& Hit)
-		{
-			FVector SurfacePoint = Hit.ImpactPoint;
-			FVector SurfaceNormal = Hit.ImpactNormal;
-			
-			// Update position to be on the surface with proper offset
-			FVector NewLocation = SurfacePoint + SurfaceNormal * CrawlSurfaceOffset;
-			ControlledMonster->SetActorLocation(NewLocation);
-			
-			// Update target surface normal for smooth alignment
-			TargetSurfaceNormal = SurfaceNormal;
-		};
-		
 		bool bFoundSurface = false;
+		FVector FinalPosition = NextPosition;
+		FVector FinalNormal = CurrentSurfaceNormal;
 		
-		// First priority: trace to find the surface at the next position along current surface normal
-		// This maintains smooth movement along the current surface type
-		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
-		FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
-		FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
+		// Strategy: Try to find the closest surface to the intended next position
+		// This provides smooth, predictable movement without random teleports
 		
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		// First: Check if there's a surface directly along the movement path (collision/obstacle)
+		FVector ForwardTraceStart = CurrentLocation;
+		FVector ForwardTraceEnd = NextPosition;
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
 		{
-			// Found a surface along current orientation - this is the preferred case
-			UpdatePositionOnSurface(HitResult);
+			// Hit an obstacle - stick to it at the impact point
+			FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
+			FinalNormal = HitResult.ImpactNormal;
 			bFoundSurface = true;
 		}
-		
-		// Second priority: if no surface along current normal, try forward trace for transitions
-		// This handles floor-to-wall transitions and obstacles
-		if (!bFoundSurface)
+		else
 		{
-			FVector ForwardTraceStart = CurrentLocation;
-			FVector ForwardTraceEnd = NextPosition;
-			if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
+			// No obstacle in path - now find the nearest surface to NextPosition
+			// Try the current surface normal first (most common case - staying on same surface)
+			FVector TraceStart = NextPosition + CurrentSurfaceNormal * TraceDistance;
+			FVector TraceEnd = NextPosition - CurrentSurfaceNormal * TraceDistance;
+			
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 			{
-				// Only use this hit if it's reasonably close to the intended movement distance
-				// This prevents teleporting to far-away surfaces
-				float HitDistance = FVector::Dist(CurrentLocation, HitResult.ImpactPoint);
-				if (HitDistance <= MovementDistance * 1.5f)
-				{
-					// Hit a surface in the movement direction (transitioning to a wall or obstacle)
-					UpdatePositionOnSurface(HitResult);
-					bFoundSurface = true;
-				}
+				FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
+				FinalNormal = HitResult.ImpactNormal;
+				bFoundSurface = true;
 			}
-		}
-		
-		// Third priority: if still no surface, try multi-directional trace for complex geometry
-		if (!bFoundSurface)
-		{
-			const int32 NumTraceDirections = UE_ARRAY_COUNT(FallbackTraceDirections);
-			for (int32 i = 0; i < NumTraceDirections; ++i)
+			else
 			{
-				const FVector& TraceDir = FallbackTraceDirections[i];
-				FVector MultiTraceStart = NextPosition + TraceDir * TraceDistance;
-				FVector MultiTraceEnd = NextPosition - TraceDir * TraceDistance;
+				// Current surface normal didn't find anything - try downward (gravity direction)
+				// This helps when transitioning between surfaces or when on complex geometry
+				FVector DownTraceStart = NextPosition + FVector::UpVector * TraceDistance;
+				FVector DownTraceEnd = NextPosition - FVector::UpVector * TraceDistance;
 				
-				if (GetWorld()->LineTraceSingleByChannel(HitResult, MultiTraceStart, MultiTraceEnd, ECC_Visibility, QueryParams))
+				if (GetWorld()->LineTraceSingleByChannel(HitResult, DownTraceStart, DownTraceEnd, ECC_Visibility, QueryParams))
 				{
-					// Found a surface - early exit to minimize traces
-					UpdatePositionOnSurface(HitResult);
+					FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
+					FinalNormal = HitResult.ImpactNormal;
 					bFoundSurface = true;
-					break;
 				}
 			}
 		}
 		
-		// If no surface found after all attempts, stay in current position to prevent disappearing
-		// This is safer than moving to an unconstrained position
-		if (!bFoundSurface)
+		// Apply the movement if we found a valid surface
+		if (bFoundSurface)
 		{
-			// Don't move - wait for next frame to find a valid surface
-			// This prevents the monster from falling through geometry or disappearing
+			ControlledMonster->SetActorLocation(FinalPosition);
+			TargetSurfaceNormal = FinalNormal;
 		}
+		// If no surface found, don't move - stay in current position
+		// This prevents falling through geometry
 		
 		return;
 	}
