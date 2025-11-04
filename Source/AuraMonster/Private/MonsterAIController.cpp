@@ -374,8 +374,9 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 	{
 		StuckTime += DeltaTime;
 		
-		// If stuck for more than 2 seconds, abandon current target and pick a new one
-		if (StuckTime > 2.0f)
+		// If stuck for more than 0.5 seconds, abandon current target and pick a new one
+		// Shorter timeout for crawling mode to keep the monster more active
+		if (StuckTime > 0.5f)
 		{
 			bHasCrawlingTarget = false;
 			StuckTime = 0.0f;
@@ -399,9 +400,11 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		if (!bStillMoving)
 		{
 			// Reached destination, stop to listen/look around
+			// Use shorter stop duration for crawling mode to keep it more active
 			bIsStoppedAtDestination = true;
 			CurrentStopTime = 0.0f;
-			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			// Crawling mode: 0.2-0.8 seconds (shorter than standing patrol's 0.5-2s)
+			TargetStopDuration = FMath::RandRange(0.2f, 0.8f);
 			bHasCrawlingTarget = false;
 			StuckTime = 0.0f;
 		}
