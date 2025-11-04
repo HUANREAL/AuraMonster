@@ -15,6 +15,14 @@ All behavior states have been successfully implemented:
   - Automatic surface detection and smooth transitions between surfaces
   - Unpredictable behavior with mid-patrol surface transitions
   - Configurable surface detection, transition chance, and alignment speed
+  - **Fixed**: Surface-aware movement system for reliable wall/ceiling crawling (Nov 2025)
+
+### Recent Improvements
+- **Wall Crawling Fix (Nov 2025)**: Resolved issue where monsters would get stuck when transitioning between vertical faces of columns
+  - Replaced ground-based movement with surface-aware position updates
+  - Added multi-directional surface detection during movement
+  - Improved surface alignment to handle movement direction
+  - Now properly crawls on all surface types including complex geometry
 
 ---
 
@@ -175,11 +183,14 @@ Comprehensive documentation covering:
    - No unnecessary calculations
    - Efficient surface detection with configurable parameters
 
-5. **Surface Crawling Implementation**
-   - Multi-directional ray tracing for surface detection
-   - Smooth interpolation for orientation changes
-   - Configurable surface detection distance and offset
-   - Unpredictable behavior through randomized surface transitions
+5. **Surface Crawling Implementation** (Updated Nov 2025)
+   - **Surface-Aware Movement**: Direct position manipulation instead of ground-based movement input
+   - **Continuous Surface Tracking**: Real-time surface detection during movement, not just at destinations
+   - **Multi-directional ray tracing**: Primary trace along surface normal, fallback to 6-directional scan
+   - **Smart Transition Handling**: Automatically detects and adapts to adjacent surfaces (column faces, corners)
+   - **Smooth interpolation**: Gradual orientation changes with configurable alignment speed
+   - **Configurable parameters**: Surface detection distance, offset, and alignment behavior
+   - **Unpredictable behavior**: Randomized surface transitions for dynamic patrol patterns
 
 ---
 
