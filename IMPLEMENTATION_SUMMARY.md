@@ -10,7 +10,12 @@ All behavior states have been successfully implemented:
   - Deliberate, heavy pace using normal navigation
   - Random reachable destinations within defined range
   - Occasional stops to listen or look around
-- ✅ **Patrol (Crawling)** - Monster patrols while crawling (base implementation provided)
+- ✅ **Patrol (Crawling)** - Monster patrols while crawling with advanced features:
+  - Custom pathfinding system allowing full freedom of movement
+  - Can crawl across floors, walls, and ceilings
+  - Smooth transitions between surfaces
+  - Mid-patrol surface switching for unpredictable behavior
+  - Surface alignment with automatic rotation
 
 ---
 
@@ -53,8 +58,28 @@ Features:
   - `GetBehaviorState()` - Get current state
   - `SetBehaviorState()` - Change state
   - `GetMovementSpeedForState()` - Query speed for state
+  - `GetSurfacePathfinding()` - Get the surface pathfinding component
 - Blueprint-implementable event:
   - `OnBehaviorStateChanged()` - React to state changes
+
+#### USurfacePathfindingComponent (Actor Component)
+Features:
+- Custom surface-based pathfinding system
+- Multi-directional surface detection (floors, walls, ceilings)
+- Smooth surface transitions and alignment
+- Randomized mid-patrol surface switching
+- Blueprint-callable functions:
+  - `GetRandomSurfaceLocation()` - Find random surface within range
+  - `MoveTowardsSurfaceLocation()` - Move while maintaining surface attachment
+  - `IsOnValidSurface()` - Check surface attachment status
+  - `GetCurrentSurfaceNormal()` - Get current surface normal
+
+**Surface Pathfinding Configuration:**
+- Surface transition chance for unpredictability
+- Surface detection range (raycast distance)
+- Surface alignment speed (rotation interpolation)
+- Minimum transition angle threshold
+- Movement acceptance radius
 
 #### AMonsterAIController (AI Controller)
 Features:
@@ -67,7 +92,7 @@ Features:
 - Blueprint-implementable behaviors:
   - `ExecuteIdleBehavior()` - Idle behavior logic with breathing and subtle movements
   - `ExecutePatrolStandingBehavior()` - Standing patrol logic with navigation and stops
-  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic (base implementation)
+  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic with surface-based movement
 - State lifecycle events:
   - `OnEnterState()` - Called when entering a state
   - `OnExitState()` - Called when leaving a state
@@ -82,7 +107,8 @@ Features:
 - Patrol range for destination selection
 - Stop duration range for listening/looking around
 - Acceptance radius for destination reach detection
-- Uses UE4 NavigationSystem for pathfinding
+- Uses UE4 NavigationSystem for standing patrol
+- Uses custom SurfacePathfindingComponent for crawling patrol
 
 ### 3. Documentation
 Comprehensive documentation covering:
@@ -142,11 +168,38 @@ Comprehensive documentation covering:
 - **PatrolCrawling**: 150.0 (slower crawling speed)
 - All speeds are configurable via Blueprint or C++
 
+### Surface-Based Crawling System
+
+**Custom Pathfinding Approach:**
+- Multi-directional raycasting to detect surfaces in all directions (6 cardinal directions)
+- Selects closest surface from floor, ceiling, or any wall
+- No dependency on Unreal's navigation mesh - works on any geometry
+- Random surface location selection within configurable patrol range
+
+**Surface Attachment & Movement:**
+- Continuous surface detection to maintain attachment
+- Movement toward target while staying on surface
+- Automatic surface snapping at each update
+- Acceptance radius for determining when target is reached
+
+**Smooth Surface Transitions:**
+- Calculates orthogonal axes (forward, right, up) aligned to surface normal
+- Smooth rotation interpolation using configurable alignment speed
+- Handles edge cases (parallel vectors) with fallback reference vectors
+- Dot product clamping to prevent NaN from floating point precision errors
+
+**Unpredictable Behavior:**
+- Configurable probability of surface transitions (default: 0.3)
+- Minimum angle threshold to trigger transitions (default: 45°)
+- Creates unpredictable mid-patrol surface switching
+- Monster may drop to all fours or crawl across surfaces unexpectedly
+
 ### Key Design Decisions
 
 1. **Separation of Concerns**
    - Character class handles state and movement
    - AI Controller handles behavior logic and transitions
+   - SurfacePathfindingComponent handles surface-based movement
    - Clean interface between the two
 
 2. **Blueprint Extensibility**
@@ -233,8 +286,18 @@ When integrating into a UE4 project, test:
 4. **AI Behavior**
    - Test patrol logic
    - Verify state-specific behaviors execute
+   - Test surface detection and crawling on walls/ceilings
+   - Verify smooth surface transitions
+   - Check unpredictable mid-patrol surface switching
 
-5. **Animation**
+5. **Surface Pathfinding**
+   - Test crawling on vertical walls
+   - Test crawling on ceilings (upside down)
+   - Test transitions from floor to wall to ceiling
+   - Verify monster orientation aligns with surfaces
+   - Test acceptance radius and target reaching logic
+
+6. **Animation**
    - Connect to Animation Blueprint
    - Test animation state machine
 
@@ -242,21 +305,28 @@ When integrating into a UE4 project, test:
 
 ## Files Changed/Created
 
-### New Files (13 total)
+### New Files (15 total)
 - 1 Plugin descriptor (.uplugin)
 - 1 Build configuration (.Build.cs)
-- 4 C++ headers (.h)
-- 3 C++ implementations (.cpp)
+- 5 C++ headers (.h)
+- 5 C++ implementations (.cpp)
 - 4 Documentation files (.md)
 
 ### Modified Files
-- 1 Repository README.md (updated)
+- 1 Repository README.md (updated with crawling behavior details)
+- 1 IMPLEMENTATION_SUMMARY.md (updated with new features)
 
 ### Statistics
-- **Total Lines**: ~1,400 lines
-- **Code**: ~600 lines (C++ headers + implementation)
-- **Documentation**: ~800 lines
+- **Total Lines**: ~2,000 lines
+- **Code**: ~900 lines (C++ headers + implementation)
+- **Documentation**: ~1,000 lines
 - **Configuration**: ~60 lines
+
+### New in This Update
+- **SurfacePathfindingComponent**: ~240 lines (120 header + 120 implementation)
+- **MonsterCharacter updates**: Added surface pathfinding component integration
+- **MonsterAIController updates**: Full crawling behavior implementation (~70 lines)
+- **Documentation updates**: Enhanced with surface pathfinding details
 
 ---
 
