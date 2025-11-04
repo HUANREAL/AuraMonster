@@ -72,6 +72,19 @@ void AMonsterCharacter::SetBehaviorState(EMonsterBehaviorState NewState)
 	}
 }
 
+/**
+ * Internal method to set behavior state without triggering AI Controller synchronization.
+ * 
+ * This method is used exclusively by MonsterAIController during:
+ * - Initial state setup in BeginPlay()
+ * - State transitions initiated by the AI Controller via TransitionToState()
+ * 
+ * Unlike SetBehaviorState(), this method does NOT notify the AI Controller of the state change,
+ * preventing circular calls. External code should use SetBehaviorState() instead, which provides
+ * full bidirectional synchronization between the character and AI controller.
+ * 
+ * @param NewState The new behavior state to set
+ */
 void AMonsterCharacter::SetBehaviorStateInternal(EMonsterBehaviorState NewState)
 {
 	// Internal method used by AI Controller to set state without triggering synchronization
