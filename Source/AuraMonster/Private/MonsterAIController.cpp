@@ -41,6 +41,8 @@ AMonsterAIController::AMonsterAIController()
 	// Initialize crawling variables
 	CrawlingTargetLocation = FVector::ZeroVector;
 	bHasCrawlingTarget = false;
+	PreviousCrawlingLocation = FVector::ZeroVector;
+	StuckTime = 0.0f;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -305,6 +307,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			bIsStoppedAtDestination = false;
 			CurrentStopTime = 0.0f;
 			bHasCrawlingTarget = false; // Reset target so we pick a new one
+			StuckTime = 0.0f; // Reset stuck detection
 		}
 		else
 		{
@@ -323,12 +326,39 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		if (SurfacePathfinding->GetRandomSurfaceLocation(CurrentLocation, PatrolRange, CrawlingTargetLocation, TargetNormal))
 		{
 			bHasCrawlingTarget = true;
+			PreviousCrawlingLocation = CurrentLocation;
+			StuckTime = 0.0f;
 		}
 		else
 		{
 			// Failed to find a target, try again next tick
 			return;
 		}
+	}
+
+	// Detect if the monster is stuck (not making progress toward target)
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	float MovementDistance = (CurrentLocation - PreviousCrawlingLocation).Size();
+	
+	// If moving very little over time, consider it stuck
+	const float MinMovementThreshold = 10.0f; // Units per second
+	if (MovementDistance < MinMovementThreshold * DeltaTime)
+	{
+		StuckTime += DeltaTime;
+		
+		// If stuck for more than 2 seconds, abandon current target and pick a new one
+		if (StuckTime > 2.0f)
+		{
+			bHasCrawlingTarget = false;
+			StuckTime = 0.0f;
+			return; // Will pick new target on next tick
+		}
+	}
+	else
+	{
+		// Making progress, reset stuck timer
+		StuckTime = 0.0f;
+		PreviousCrawlingLocation = CurrentLocation;
 	}
 
 	// Move toward the target using surface-based movement
@@ -345,6 +375,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			CurrentStopTime = 0.0f;
 			TargetStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
 			bHasCrawlingTarget = false;
+			StuckTime = 0.0f;
 		}
 	}
 }
@@ -387,6 +418,8 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		{
 			bHasCrawlingTarget = false;
 			CrawlingTargetLocation = FVector::ZeroVector;
+			StuckTime = 0.0f;
+			PreviousCrawlingLocation = FVector::ZeroVector;
 		}
 	}
 }

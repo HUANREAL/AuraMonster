@@ -144,16 +144,40 @@ bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& Tar
 	
 	if (bHitForward && ForwardHit.bBlockingHit)
 	{
-		// Found a surface along the path to target
-		FVector SurfaceLocation = ForwardHit.Location + ForwardHit.Normal * 10.0f;
-		FVector SurfaceNormal = ForwardHit.Normal;
+		// Check if hitting an obstacle (wall normal perpendicular to movement)
+		// vs. hitting the surface we're moving along
+		float DotWithMovement = FVector::DotProduct(ForwardHit.Normal, DirectionToTarget);
 		
-		CachedOwner->SetActorLocation(SurfaceLocation);
-		CurrentSurfaceNormal = SurfaceNormal;
-		bIsOnSurface = true;
-		
-		// Align to new surface
-		AlignToSurface(SurfaceNormal, DeltaTime);
+		// If the hit normal is pointing significantly against our movement direction,
+		// it's likely an obstacle blocking our path
+		if (DotWithMovement < -0.3f)
+		{
+			// This is an obstacle - don't move toward it
+			// Instead, try to find a surface at our current position to stay grounded
+			FVector NearestSurfaceLocation, NearestSurfaceNormal;
+			if (DetectSurface(CurrentLocation, NearestSurfaceLocation, NearestSurfaceNormal))
+			{
+				CachedOwner->SetActorLocation(NearestSurfaceLocation);
+				CurrentSurfaceNormal = NearestSurfaceNormal;
+				bIsOnSurface = true;
+				AlignToSurface(NearestSurfaceNormal, DeltaTime);
+			}
+			// Return true to indicate still trying (stuck detection in AI controller will handle this)
+			return true;
+		}
+		else
+		{
+			// Hit a surface we can move onto (like floor or ceiling)
+			FVector SurfaceLocation = ForwardHit.Location + ForwardHit.Normal * 10.0f;
+			FVector SurfaceNormal = ForwardHit.Normal;
+			
+			CachedOwner->SetActorLocation(SurfaceLocation);
+			CurrentSurfaceNormal = SurfaceNormal;
+			bIsOnSurface = true;
+			
+			// Align to new surface
+			AlignToSurface(SurfaceNormal, DeltaTime);
+		}
 	}
 	else
 	{
