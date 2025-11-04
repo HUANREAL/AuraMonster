@@ -390,7 +390,8 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		QueryParams.AddIgnoredActor(ControlledMonster);
 		
 		// Lambda to update position on detected surface
-		auto UpdatePositionOnSurface = [&](const FHitResult& Hit)
+		// Capture only the specific variables needed to avoid unintended side effects
+		auto UpdatePositionOnSurface = [this, &TargetSurfaceNormal](const FHitResult& Hit)
 		{
 			FVector SurfacePoint = Hit.ImpactPoint;
 			FVector SurfaceNormal = Hit.ImpactNormal;
@@ -417,6 +418,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			bool bFoundSurface = false;
 			
 			// Try tracing in multiple directions using pre-allocated static array
+			// The loop will early exit as soon as a surface is found (break on line 432)
 			const int32 NumTraceDirections = UE_ARRAY_COUNT(FallbackTraceDirections);
 			for (int32 i = 0; i < NumTraceDirections; ++i)
 			{
@@ -426,7 +428,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 				
 				if (GetWorld()->LineTraceSingleByChannel(HitResult, MultiTraceStart, MultiTraceEnd, ECC_Visibility, QueryParams))
 				{
-					// Found a surface
+					// Found a surface - early exit to minimize traces
 					UpdatePositionOnSurface(HitResult);
 					bFoundSurface = true;
 					break;
