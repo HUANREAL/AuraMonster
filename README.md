@@ -21,7 +21,11 @@ The plugin implements three distinct behavior states for monsters:
    - Configurable patrol range, stop duration, and acceptance radius
 
 3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture
-   - Can be customized with similar behavior to standing patrol
+   - Uses custom pathfinding system for full freedom of movement
+   - Can crawl across floors, walls, and ceilings
+   - Smooth transitions between surfaces
+   - Mid-patrol surface switching for unpredictable behavior
+   - Does not rely on Unreal Engine's navigation mesh
 
 ### Core Components
 
@@ -50,6 +54,27 @@ Base character class for monsters with:
 - `OnNeckTwitch()` - Event called to trigger neck twitch animation (Blueprint implementable)
 - `OnFingerShift()` - Event called to trigger finger shift animation (Blueprint implementable)
 - `OnBreathingUpdate(BreathingIntensity)` - Event called each frame with breathing intensity 0.0-1.0 (Blueprint implementable)
+- `GetSurfacePathfinding()` - Returns the surface pathfinding component for crawling behavior
+
+#### USurfacePathfindingComponent (Actor Component)
+Component that enables monsters to crawl across any surface with smooth transitions:
+- Multi-directional surface detection (floors, walls, ceilings)
+- Custom pathfinding independent of navigation mesh
+- Smooth surface alignment and rotation
+- Randomized surface transitions for unpredictable behavior
+
+**Key Functions:**
+- `GetRandomSurfaceLocation(Origin, Range, OutLocation, OutNormal)` - Find a random surface within range
+- `MoveTowardsSurfaceLocation(Target, DeltaTime, Speed)` - Move toward target while maintaining surface attachment
+- `IsOnValidSurface()` - Check if currently attached to a surface
+- `GetCurrentSurfaceNormal()` - Get the normal of the current surface
+
+**Properties:**
+- `SurfaceTransitionChance` (default: 0.3) - Probability of attempting surface transitions mid-patrol
+- `SurfaceDetectionRange` (default: 200.0) - How far to trace when detecting surfaces
+- `SurfaceAlignmentSpeed` (default: 5.0) - How quickly to rotate to align with new surfaces
+- `MinTransitionAngle` (default: 45.0) - Minimum angle difference to trigger a surface transition
+- `AcceptanceRadius` (default: 100.0) - Distance threshold to consider target location reached
 
 #### AMonsterAIController (AI Controller)
 AI controller that manages monster behavior:
@@ -163,13 +188,23 @@ class AMyMonsterAI : public AMonsterAIController
 
 ### Example Behavior Implementation
 
+#### Patrol Standing Behavior
 The patrol standing behavior is already implemented by default with the following features:
 - Selects random reachable destinations within `PatrolRange`
 - Uses Unreal Engine's navigation system to follow the floor
 - Walks with deliberate, heavy pace (configured via `PatrolStandingSpeed`)
 - Stops at each destination for a random duration between `MinStopDuration` and `MaxStopDuration` to listen/look around
 
-If you want to customize or extend the patrol behavior, you can override `ExecutePatrolStandingBehavior_Implementation`:
+#### Patrol Crawling Behavior
+The patrol crawling behavior provides advanced surface-based movement:
+- Uses custom pathfinding to crawl across floors, walls, and ceilings
+- Detects and attaches to surfaces in all directions (not limited to navmesh)
+- Smoothly transitions between different surface orientations
+- Randomly switches surfaces mid-patrol for unpredictable movement patterns
+- Automatically aligns the monster's orientation to match surface normals
+- Configurable through `SurfacePathfindingComponent` properties
+
+If you want to customize or extend the patrol behavior, you can override `ExecutePatrolStandingBehavior_Implementation` or `ExecutePatrolCrawlingBehavior_Implementation`:
 
 ```cpp
 void AMyMonsterAI::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
