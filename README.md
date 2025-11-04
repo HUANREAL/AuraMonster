@@ -97,6 +97,8 @@ AI controller that manages monster behavior:
 - `MinTransitionPitch` (default: -75.0) - Minimum pitch angle when transitioning between surfaces
 - `MaxTransitionPitch` (default: 75.0) - Maximum pitch angle when transitioning between surfaces
 - `MinCrawlDistanceMultiplier` (default: 0.3) - Minimum distance multiplier relative to PatrolRange
+- `SurfaceTraceDistanceMultiplier` (default: 0.5) - Controls trace distance for surface detection (Advanced)
+- `MovementDirectionBlendSpeed` (default: 2.5) - Controls turning speed while crawling (Advanced)
 
 ## Installation
 
@@ -188,13 +190,16 @@ The patrol standing behavior is already implemented by default with the followin
 - Stops at each destination for a random duration between `MinStopDuration` and `MaxStopDuration` to listen/look around
 
 **Patrol Crawling Behavior:**
-The patrol crawling behavior provides full surface-crawling capabilities:
+The patrol crawling behavior provides full surface-crawling capabilities with enhanced wall/ceiling movement:
+- **Surface-aware movement system** for reliable crawling on all surface types
 - Custom pathfinding system for movement across floors, walls, and ceilings
-- Automatic surface detection and orientation
-- Smooth transitions between different surface types
+- **Continuous surface detection** during movement to handle complex geometry transitions
+- Automatic surface detection and orientation with multi-directional tracing
+- Smooth transitions between different surface types (including column faces and corners)
 - Unpredictable surface switching during patrol (controlled by `SurfaceTransitionChance`)
 - Movement speed configured via `PatrolCrawlingSpeed`
 - Surface alignment controlled by `SurfaceAlignmentSpeed`
+- **Configurable trace parameters** for fine-tuning surface detection and turning behavior
 
 If you want to customize or extend the patrol behavior, you can override `ExecutePatrolStandingBehavior_Implementation`:
 
