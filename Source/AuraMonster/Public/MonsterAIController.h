@@ -118,6 +118,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
 	float CrawlSurfaceOffset;
 
+	/** Distance above current position for fallback floor detection trace start */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float FallbackTraceUpDistance;
+
+	/** Distance below current position for fallback floor detection trace end */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling")
+	float FallbackTraceDownDistance;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(VisibleAnywhere, Category = "Monster AI")

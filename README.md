@@ -90,6 +90,8 @@ AI controller that manages monster behavior:
 - `SurfaceTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to a different surface type during crawling
 - `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with new surfaces
 - `CrawlSurfaceOffset` (default: 50.0) - Distance offset from surface to place the monster when crawling
+- `FallbackTraceUpDistance` (default: 100.0) - Distance above current position for fallback floor detection
+- `FallbackTraceDownDistance` (default: 500.0) - Distance below current position for fallback floor detection
 
 ## Installation
 

@@ -30,6 +30,8 @@ AMonsterAIController::AMonsterAIController()
 	SurfaceTransitionChance = 0.3f;
 	SurfaceAlignmentSpeed = 5.0f;
 	CrawlSurfaceOffset = 50.0f;
+	FallbackTraceUpDistance = 100.0f;
+	FallbackTraceDownDistance = 500.0f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -332,11 +334,11 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			TargetCrawlStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
 			
 			// Potentially transition to a different surface
-			// Note: Surface transition logic can be extended in future to change target surface normal
+			// Set flag to bias pathfinding towards different surface orientations (walls/ceilings)
 			if (FMath::FRand() < SurfaceTransitionChance)
 			{
 				// Mark that we should look for a surface with a different orientation
-				// Currently this just increases the chance of selecting varied destinations
+				// This biases the pitch range in FindCrawlableDestination to favor vertical surfaces
 				bIsTransitioningBetweenSurfaces = true;
 			}
 			
@@ -344,14 +346,12 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		}
 		
 		// Continue moving towards destination
-		// Use the crawling speed from the character
+		// Use AddMovementInput for efficient movement with physics and navigation
 		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
-		FVector NewLocation = CurrentLocation + Direction * MovementSpeed * DeltaTime;
 		
-		// Note: Using SetActorLocation with sweep for collision detection
-		// For performance-critical scenarios, consider using CharacterMovementComponent
-		// or caching collision results
-		ControlledMonster->SetActorLocation(NewLocation, true);
+		// AddMovementInput expects a normalized direction and scales by MaxWalkSpeed
+		// The character movement component will handle collision and physics
+		ControlledMonster->AddMovementInput(Direction, 1.0f);
 		
 		return;
 	}
@@ -481,6 +481,14 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 		// Bias towards forward and sides for more natural movement
 		float Yaw = FMath::RandRange(-180.0f, 180.0f);
 		float Pitch = FMath::RandRange(-45.0f, 45.0f); // Allow some vertical exploration
+		
+		// If transitioning between surfaces, bias towards different orientations (walls/ceilings)
+		if (bIsTransitioningBetweenSurfaces)
+		{
+			// Increase pitch range to favor vertical surfaces
+			Pitch = FMath::RandRange(-75.0f, 75.0f);
+		}
+		
 		FRotator RandomRotation(Pitch, Yaw, 0.0f);
 		FVector RandomDirection = RandomRotation.Vector();
 
@@ -489,8 +497,9 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 		FVector TargetPoint = CurrentLocation + RandomDirection * Distance;
 
 		// Trace towards the target point to find a surface
-		FVector TraceStart = TargetPoint + FVector(0.0f, 0.0f, CrawlSurfaceDetectionDistance * 0.5f);
-		FVector TraceEnd = TargetPoint - FVector(0.0f, 0.0f, CrawlSurfaceDetectionDistance * 0.5f);
+		// Use the random direction perpendicular to properly detect walls and ceilings
+		FVector TraceStart = TargetPoint + RandomDirection * (CrawlSurfaceDetectionDistance * 0.5f);
+		FVector TraceEnd = TargetPoint - RandomDirection * (CrawlSurfaceDetectionDistance * 0.5f);
 
 		FHitResult HitResult;
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
@@ -529,9 +538,9 @@ bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVecto
 		}
 	}
 
-	// Fallback: try to find floor beneath current position
-	FVector TraceStart = CurrentLocation + FVector(0.0f, 0.0f, 100.0f);
-	FVector TraceEnd = CurrentLocation - FVector(0.0f, 0.0f, 500.0f);
+	// Fallback: try to find floor beneath current position using configurable distances
+	FVector TraceStart = CurrentLocation + FVector(0.0f, 0.0f, FallbackTraceUpDistance);
+	FVector TraceEnd = CurrentLocation - FVector(0.0f, 0.0f, FallbackTraceDownDistance);
 	
 	FHitResult HitResult;
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
