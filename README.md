@@ -20,8 +20,12 @@ The plugin implements three distinct behavior states for monsters:
    - Walks toward destinations with occasional stops to listen or look around
    - Configurable patrol range, stop duration, and acceptance radius
 
-3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture
-   - Can be customized with similar behavior to standing patrol
+3. **Patrol (Crawling)** - Monster patrols an area in a crawling posture with surface crawling
+   - Uses custom pathfinding system for full freedom of movement across floors, walls, and ceilings
+   - Automatically detects and transitions between different surface types
+   - Smooth surface alignment with configurable rotation speed
+   - Unpredictable surface transitions mid-patrol for more dynamic behavior
+   - Configurable surface detection distance, transition chance, and alignment speed
 
 ### Core Components
 
@@ -80,6 +84,11 @@ AI controller that manages monster behavior:
 - `MinStopDuration` (default: 2.0) - Minimum seconds to wait at each patrol destination (to listen/look around)
 - `MaxStopDuration` (default: 5.0) - Maximum seconds to wait at each patrol destination (to listen/look around)
 - `PatrolAcceptanceRadius` (default: 100.0) - How close the monster needs to get to the destination before considering it reached
+
+**Patrol Crawling Behavior Properties:**
+- `CrawlSurfaceDetectionDistance` (default: 2000.0) - Maximum distance to check for crawlable surfaces
+- `SurfaceTransitionChance` (default: 0.3) - Probability (0.0-1.0) of transitioning to a different surface type during crawling
+- `SurfaceAlignmentSpeed` (default: 5.0) - Speed at which the monster rotates to align with new surfaces
 
 ## Installation
 
@@ -163,11 +172,21 @@ class AMyMonsterAI : public AMonsterAIController
 
 ### Example Behavior Implementation
 
+**Patrol Standing Behavior:**
 The patrol standing behavior is already implemented by default with the following features:
 - Selects random reachable destinations within `PatrolRange`
 - Uses Unreal Engine's navigation system to follow the floor
 - Walks with deliberate, heavy pace (configured via `PatrolStandingSpeed`)
 - Stops at each destination for a random duration between `MinStopDuration` and `MaxStopDuration` to listen/look around
+
+**Patrol Crawling Behavior:**
+The patrol crawling behavior provides full surface-crawling capabilities:
+- Custom pathfinding system for movement across floors, walls, and ceilings
+- Automatic surface detection and orientation
+- Smooth transitions between different surface types
+- Unpredictable surface switching during patrol (controlled by `SurfaceTransitionChance`)
+- Movement speed configured via `PatrolCrawlingSpeed`
+- Surface alignment controlled by `SurfaceAlignmentSpeed`
 
 If you want to customize or extend the patrol behavior, you can override `ExecutePatrolStandingBehavior_Implementation`:
 
@@ -179,6 +198,19 @@ void AMyMonsterAI::ExecutePatrolStandingBehavior_Implementation(float DeltaTime)
     
     // Add custom behavior here
     // For example: detect nearby players, trigger animations, etc.
+}
+```
+
+Similarly for crawling behavior:
+
+```cpp
+void AMyMonsterAI::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
+{
+    // Call the parent implementation for default crawling behavior with surface transitions
+    Super::ExecutePatrolCrawlingBehavior_Implementation(DeltaTime);
+    
+    // Add custom behavior here
+    // For example: special animations when transitioning surfaces, sound effects, etc.
 }
 ```
 

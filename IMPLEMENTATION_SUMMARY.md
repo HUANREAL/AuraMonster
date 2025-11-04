@@ -10,7 +10,11 @@ All behavior states have been successfully implemented:
   - Deliberate, heavy pace using normal navigation
   - Random reachable destinations within defined range
   - Occasional stops to listen or look around
-- ✅ **Patrol (Crawling)** - Monster patrols while crawling (base implementation provided)
+- ✅ **Patrol (Crawling)** - Monster patrols while crawling with advanced surface movement:
+  - Custom pathfinding system for full freedom of movement across floors, walls, and ceilings
+  - Automatic surface detection and smooth transitions between surfaces
+  - Unpredictable behavior with mid-patrol surface transitions
+  - Configurable surface detection, transition chance, and alignment speed
 
 ---
 
@@ -67,7 +71,7 @@ Features:
 - Blueprint-implementable behaviors:
   - `ExecuteIdleBehavior()` - Idle behavior logic with breathing and subtle movements
   - `ExecutePatrolStandingBehavior()` - Standing patrol logic with navigation and stops
-  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic (base implementation)
+  - `ExecutePatrolCrawlingBehavior()` - Crawling patrol logic with surface transitions
 - State lifecycle events:
   - `OnEnterState()` - Called when entering a state
   - `OnExitState()` - Called when leaving a state
@@ -83,6 +87,12 @@ Features:
 - Stop duration range for listening/looking around
 - Acceptance radius for destination reach detection
 - Uses UE4 NavigationSystem for pathfinding
+
+**Patrol Crawling Behavior Configuration:**
+- Surface detection distance for finding crawlable surfaces
+- Surface transition chance for unpredictable behavior
+- Surface alignment speed for smooth orientation changes
+- Custom pathfinding for multi-surface movement (floors, walls, ceilings)
 
 ### 3. Documentation
 Comprehensive documentation covering:

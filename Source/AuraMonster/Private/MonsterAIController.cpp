@@ -25,6 +25,11 @@ AMonsterAIController::AMonsterAIController()
 	MaxStopDuration = 5.0f;
 	PatrolAcceptanceRadius = 100.0f;
 
+	// Initialize crawling behavior parameters
+	CrawlSurfaceDetectionDistance = 2000.0f;
+	SurfaceTransitionChance = 0.3f;
+	SurfaceAlignmentSpeed = 5.0f;
+
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
 	TargetIdleDuration = FMath::RandRange(MinIdleDuration, MaxIdleDuration);
@@ -36,6 +41,16 @@ AMonsterAIController::AMonsterAIController()
 	CurrentStopTime = 0.0f;
 	TargetStopDuration = 0.0f;
 	bIsStoppedAtDestination = false;
+
+	// Initialize crawling variables
+	CurrentSurfaceNormal = FVector::UpVector;
+	TargetSurfaceNormal = FVector::UpVector;
+	CrawlingDestination = FVector::ZeroVector;
+	bIsMovingToCrawlDestination = false;
+	bIsTransitioningBetweenSurfaces = false;
+	CurrentCrawlStopTime = 0.0f;
+	TargetCrawlStopDuration = 0.0f;
+	bIsStoppedAtCrawlDestination = false;
 	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
@@ -271,9 +286,88 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 
 void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float DeltaTime)
 {
-	// Default patrol crawling behavior
-	// This can be overridden in Blueprint or subclasses to implement actual patrol logic
-	// Similar to standing patrol but with different animation/movement style
+	if (!ControlledMonster)
+	{
+		return;
+	}
+
+	// Update surface alignment for smooth transitions
+	UpdateSurfaceAlignment(DeltaTime);
+
+	// Check if we're currently stopped at a destination to listen/look around
+	if (bIsStoppedAtCrawlDestination)
+	{
+		CurrentCrawlStopTime += DeltaTime;
+		
+		// Check if we've waited long enough
+		if (CurrentCrawlStopTime >= TargetCrawlStopDuration)
+		{
+			// Done stopping, ready to move to next destination
+			bIsStoppedAtCrawlDestination = false;
+			CurrentCrawlStopTime = 0.0f;
+			bIsMovingToCrawlDestination = false;
+		}
+		else
+		{
+			// Still waiting, don't move yet
+			return;
+		}
+	}
+
+	// Check if we're currently moving to a crawl destination
+	if (bIsMovingToCrawlDestination)
+	{
+		// Move towards the crawling destination manually for precise control
+		FVector CurrentLocation = ControlledMonster->GetActorLocation();
+		FVector Direction = (CrawlingDestination - CurrentLocation).GetSafeNormal();
+		
+		// Check if we've reached the destination
+		if (HasReachedCrawlDestination())
+		{
+			// We've reached destination, now stop to listen/look around
+			bIsStoppedAtCrawlDestination = true;
+			bIsMovingToCrawlDestination = false;
+			CurrentCrawlStopTime = 0.0f;
+			TargetCrawlStopDuration = GetValidatedRandomRange(MinStopDuration, MaxStopDuration);
+			
+			// Potentially transition to a different surface
+			if (FMath::FRand() < SurfaceTransitionChance)
+			{
+				bIsTransitioningBetweenSurfaces = true;
+			}
+			
+			return;
+		}
+		
+		// Continue moving towards destination
+		// Use the crawling speed from the character
+		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
+		FVector NewLocation = CurrentLocation + Direction * MovementSpeed * DeltaTime;
+		ControlledMonster->SetActorLocation(NewLocation, true);
+		
+		return;
+	}
+
+	// Need to select a new crawl destination
+	FVector NewDestination;
+	FVector NewSurfaceNormal;
+	
+	if (FindCrawlableDestination(NewDestination, NewSurfaceNormal))
+	{
+		// Found a valid crawlable destination
+		CrawlingDestination = NewDestination;
+		TargetSurfaceNormal = NewSurfaceNormal;
+		bIsMovingToCrawlDestination = true;
+		bIsTransitioningBetweenSurfaces = false;
+		
+		// Orient towards the destination
+		FVector Direction = (CrawlingDestination - ControlledMonster->GetActorLocation()).GetSafeNormal();
+		if (!Direction.IsNearlyZero())
+		{
+			FRotator TargetRotation = Direction.Rotation();
+			ControlledMonster->SetActorRotation(TargetRotation);
+		}
+	}
 }
 
 void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState NewState)
@@ -308,6 +402,39 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
+		
+		// Reset crawling-specific variables
+		if (NewState == EMonsterBehaviorState::PatrolCrawling)
+		{
+			CurrentCrawlStopTime = 0.0f;
+			TargetCrawlStopDuration = 0.0f;
+			bIsStoppedAtCrawlDestination = false;
+			bIsMovingToCrawlDestination = false;
+			bIsTransitioningBetweenSurfaces = false;
+			
+			// Initialize surface normal to current floor
+			if (ControlledMonster)
+			{
+				FVector Location = ControlledMonster->GetActorLocation();
+				FVector TraceStart = Location + FVector(0.0f, 0.0f, 100.0f);
+				FVector TraceEnd = Location - FVector(0.0f, 0.0f, 200.0f);
+				
+				FHitResult HitResult;
+				FCollisionQueryParams QueryParams;
+				QueryParams.AddIgnoredActor(ControlledMonster);
+				
+				if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+				{
+					CurrentSurfaceNormal = HitResult.ImpactNormal;
+					TargetSurfaceNormal = HitResult.ImpactNormal;
+				}
+				else
+				{
+					CurrentSurfaceNormal = FVector::UpVector;
+					TargetSurfaceNormal = FVector::UpVector;
+				}
+			}
+		}
 	}
 }
 
@@ -323,4 +450,129 @@ float AMonsterAIController::GetValidatedRandomRange(float MinValue, float MaxVal
 	float ValidMin = FMath::Min(MinValue, MaxValue);
 	float ValidMax = FMath::Max(MinValue, MaxValue);
 	return FMath::RandRange(ValidMin, ValidMax);
+}
+
+bool AMonsterAIController::FindCrawlableDestination(FVector& OutLocation, FVector& OutSurfaceNormal)
+{
+	if (!ControlledMonster || !GetWorld())
+	{
+		return false;
+	}
+
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(ControlledMonster);
+
+	// Try multiple random directions to find a crawlable surface
+	const int32 MaxAttempts = 8;
+	for (int32 Attempt = 0; Attempt < MaxAttempts; ++Attempt)
+	{
+		// Generate a random direction
+		// Bias towards forward and sides for more natural movement
+		float Yaw = FMath::RandRange(-180.0f, 180.0f);
+		float Pitch = FMath::RandRange(-45.0f, 45.0f); // Allow some vertical exploration
+		FRotator RandomRotation(Pitch, Yaw, 0.0f);
+		FVector RandomDirection = RandomRotation.Vector();
+
+		// Random distance within patrol range
+		float Distance = FMath::RandRange(PatrolRange * 0.3f, PatrolRange);
+		FVector TargetPoint = CurrentLocation + RandomDirection * Distance;
+
+		// Trace towards the target point to find a surface
+		FVector TraceStart = TargetPoint + FVector(0.0f, 0.0f, CrawlSurfaceDetectionDistance * 0.5f);
+		FVector TraceEnd = TargetPoint - FVector(0.0f, 0.0f, CrawlSurfaceDetectionDistance * 0.5f);
+
+		FHitResult HitResult;
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		{
+			// Found a surface, check if it's accessible
+			FVector SurfaceLocation = HitResult.ImpactPoint;
+			FVector SurfaceNormal = HitResult.ImpactNormal;
+
+			// Offset slightly from the surface
+			SurfaceLocation += SurfaceNormal * 50.0f;
+
+			// Check if we can trace a path to this location
+			FHitResult PathCheckHit;
+			if (!GetWorld()->LineTraceSingleByChannel(PathCheckHit, CurrentLocation, SurfaceLocation, ECC_Visibility, QueryParams))
+			{
+				// No obstacles in the way
+				OutLocation = SurfaceLocation;
+				OutSurfaceNormal = SurfaceNormal;
+				return true;
+			}
+		}
+
+		// Try a different approach: trace in the random direction and then down/up to find nearest surface
+		FVector DirectTraceEnd = CurrentLocation + RandomDirection * Distance;
+		FHitResult DirectHit;
+		if (GetWorld()->LineTraceSingleByChannel(DirectHit, CurrentLocation, DirectTraceEnd, ECC_Visibility, QueryParams))
+		{
+			// Hit something, trace perpendicular to find the surface
+			FVector HitPoint = DirectHit.ImpactPoint;
+			FVector HitNormal = DirectHit.ImpactNormal;
+			
+			// Offset from the surface
+			OutLocation = HitPoint + HitNormal * 50.0f;
+			OutSurfaceNormal = HitNormal;
+			return true;
+		}
+	}
+
+	// Fallback: try to find floor beneath current position
+	FVector TraceStart = CurrentLocation + FVector(0.0f, 0.0f, 100.0f);
+	FVector TraceEnd = CurrentLocation - FVector(0.0f, 0.0f, 500.0f);
+	
+	FHitResult HitResult;
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+	{
+		OutLocation = HitResult.ImpactPoint + HitResult.ImpactNormal * 50.0f;
+		OutSurfaceNormal = HitResult.ImpactNormal;
+		return true;
+	}
+
+	return false;
+}
+
+void AMonsterAIController::UpdateSurfaceAlignment(float DeltaTime)
+{
+	if (!ControlledMonster || SurfaceAlignmentSpeed <= 0.0f)
+	{
+		return;
+	}
+
+	// Smoothly interpolate from current to target surface normal
+	CurrentSurfaceNormal = FMath::VInterpTo(CurrentSurfaceNormal, TargetSurfaceNormal, DeltaTime, SurfaceAlignmentSpeed);
+	
+	// Calculate rotation to align with surface
+	// The "up" vector should align with the surface normal
+	FRotator CurrentRotation = ControlledMonster->GetActorRotation();
+	FVector ForwardVector = CurrentRotation.Vector();
+	
+	// Project forward vector onto the surface plane
+	FVector ProjectedForward = ForwardVector - CurrentSurfaceNormal * FVector::DotProduct(ForwardVector, CurrentSurfaceNormal);
+	ProjectedForward.Normalize();
+	
+	// Build a rotation from the projected forward and surface normal
+	if (!ProjectedForward.IsNearlyZero() && !CurrentSurfaceNormal.IsNearlyZero())
+	{
+		FMatrix RotationMatrix = FRotationMatrix::MakeFromXZ(ProjectedForward, CurrentSurfaceNormal);
+		FRotator TargetRotation = RotationMatrix.Rotator();
+		
+		// Smoothly rotate towards target
+		FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, SurfaceAlignmentSpeed);
+		ControlledMonster->SetActorRotation(NewRotation);
+	}
+}
+
+bool AMonsterAIController::HasReachedCrawlDestination() const
+{
+	if (!ControlledMonster)
+	{
+		return false;
+	}
+
+	FVector CurrentLocation = ControlledMonster->GetActorLocation();
+	float Distance = FVector::Dist(CurrentLocation, CrawlingDestination);
+	return Distance <= PatrolAcceptanceRadius;
 }
