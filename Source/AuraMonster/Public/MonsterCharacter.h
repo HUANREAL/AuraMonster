@@ -41,6 +41,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;
 
+	/** Get the surface pathfinding component */
+	UFUNCTION(BlueprintCallable, Category = "Monster")
+	USurfacePathfindingComponent* GetSurfacePathfinding() const { return SurfacePathfinding; }
+
 protected:
 	/** 
 	 * Internal method to set behavior state without triggering AI Controller synchronization.
@@ -84,12 +88,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Monster|Components")
 	USurfacePathfindingComponent* SurfacePathfinding;
 
-public:
-	/** Get the surface pathfinding component */
-	UFUNCTION(BlueprintCallable, Category = "Monster")
-	USurfacePathfindingComponent* GetSurfacePathfinding() const { return SurfacePathfinding; }
-
-protected:
 	/** Called when behavior state changes */
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster")
 	void OnBehaviorStateChanged(EMonsterBehaviorState OldState, EMonsterBehaviorState NewState);

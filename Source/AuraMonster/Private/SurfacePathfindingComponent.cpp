@@ -131,7 +131,9 @@ bool USurfacePathfindingComponent::MoveTowardsSurfaceLocation(const FVector& Tar
 		if (ShouldAttemptSurfaceTransition())
 		{
 			// Calculate angle between current and new surface
-			float AngleDifference = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(CurrentSurfaceNormal, SurfaceNormal)));
+			// Clamp dot product to avoid NaN from floating point precision errors
+			float DotProduct = FMath::Clamp(FVector::DotProduct(CurrentSurfaceNormal, SurfaceNormal), -1.0f, 1.0f);
+			float AngleDifference = FMath::RadiansToDegrees(FMath::Acos(DotProduct));
 			
 			// Only transition if angle difference is significant
 			if (AngleDifference >= MinTransitionAngle)
@@ -214,8 +216,27 @@ void USurfacePathfindingComponent::AlignToSurface(const FVector& TargetNormal, f
 	// Calculate the target rotation that aligns the actor's up vector with the surface normal
 	FRotator CurrentRotation = CachedOwner->GetActorRotation();
 	
-	// Create a rotation where the Z-axis (up) aligns with the surface normal
-	FRotator TargetRotation = UKismetMathLibrary::MakeRotFromZX(TargetNormal, CachedOwner->GetActorForwardVector());
+	// Get current forward direction and ensure it's normalized
+	FVector CurrentForward = CachedOwner->GetActorForwardVector();
+	CurrentForward.Normalize();
+	
+	// Calculate a right vector that's perpendicular to the target normal
+	// Use the current forward vector or a fallback if they're parallel
+	FVector RightVector = FVector::CrossProduct(TargetNormal, CurrentForward);
+	if (RightVector.SizeSquared() < KINDA_SMALL_NUMBER)
+	{
+		// Current forward is parallel to target normal, use a different reference vector
+		FVector ReferenceVector = FMath::Abs(TargetNormal.Z) < 0.9f ? FVector::UpVector : FVector::ForwardVector;
+		RightVector = FVector::CrossProduct(TargetNormal, ReferenceVector);
+	}
+	RightVector.Normalize();
+	
+	// Calculate the forward vector that's perpendicular to both the normal and right vector
+	FVector ForwardVector = FVector::CrossProduct(RightVector, TargetNormal);
+	ForwardVector.Normalize();
+	
+	// Create a rotation from these orthogonal vectors
+	FRotator TargetRotation = UKismetMathLibrary::MakeRotationFromAxes(ForwardVector, RightVector, TargetNormal);
 
 	// Smoothly interpolate to the target rotation
 	FRotator NewRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, SurfaceAlignmentSpeed);
