@@ -155,6 +155,9 @@ private:
 	/** Time spent with minimal movement (for stuck detection) */
 	float StuckTime;
 
+	/** Counter for failed navigation attempts in standing patrol */
+	int32 FailedNavAttempts;
+
 	/** Helper function to get a random value within a validated range */
 	float GetValidatedRandomRange(float MinValue, float MaxValue) const;
 };

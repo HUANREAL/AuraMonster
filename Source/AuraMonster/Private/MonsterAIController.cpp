@@ -44,6 +44,9 @@ AMonsterAIController::AMonsterAIController()
 	PreviousCrawlingLocation = FVector::ZeroVector;
 	StuckTime = 0.0f;
 	
+	// Initialize patrol variables
+	FailedNavAttempts = 0;
+	
 	// Initialize cached references
 	CachedNavSystem = nullptr;
 	CachedPathFollowingComp = nullptr;
@@ -171,8 +174,9 @@ void AMonsterAIController::ExecuteIdleBehavior_Implementation(float DeltaTime)
 		float RandomValue = FMath::FRand();
 		if (RandomValue < PatrolTransitionChance)
 		{
-			// Randomly choose between standing and crawling patrol
-			EMonsterBehaviorState NewState = (FMath::FRand() < 0.5f) 
+			// Prefer standing patrol over crawling patrol (70% standing, 30% crawling)
+			// Standing patrol is more natural and easier to see for most environments
+			EMonsterBehaviorState NewState = (FMath::FRand() < 0.7f) 
 				? EMonsterBehaviorState::PatrolStanding 
 				: EMonsterBehaviorState::PatrolCrawling;
 			TransitionToState(NewState);
@@ -251,6 +255,14 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 	// Need to select a new random patrol destination using cached navigation system
 	if (!CachedNavSystem)
 	{
+		// No navigation system available - fall back to crawling mode after a few attempts
+		FailedNavAttempts++;
+		if (FailedNavAttempts >= 5)
+		{
+			// Navigation not available, switch to crawling mode which doesn't require navmesh
+			TransitionToState(EMonsterBehaviorState::PatrolCrawling);
+			FailedNavAttempts = 0;
+		}
 		return;
 	}
 
@@ -266,6 +278,9 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		// Move to the new patrol destination with deliberate, heavy pace
 		// The movement speed is configured via PatrolStandingSpeed property in AMonsterCharacter
 		MoveToLocation(ResultLocation.Location, PatrolAcceptanceRadius);
+		
+		// Reset failed attempts counter on success
+		FailedNavAttempts = 0;
 	}
 	else
 	{
@@ -275,6 +290,19 @@ void AMonsterAIController::ExecutePatrolStandingBehavior_Implementation(float De
 		if (bFoundCloserLocation)
 		{
 			MoveToLocation(CloserResultLocation.Location, PatrolAcceptanceRadius);
+			FailedNavAttempts = 0;
+		}
+		else
+		{
+			// Failed to find location even with smaller radius
+			FailedNavAttempts++;
+			
+			// After multiple failures, switch to crawling mode which doesn't need navmesh
+			if (FailedNavAttempts >= 10)
+			{
+				TransitionToState(EMonsterBehaviorState::PatrolCrawling);
+				FailedNavAttempts = 0;
+			}
 		}
 		// If still can't find a location, the monster will try again on the next tick
 		// This prevents getting stuck while allowing for environmental constraints
@@ -412,6 +440,12 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 		CurrentStopTime = 0.0f;
 		TargetStopDuration = 0.0f;
 		bIsStoppedAtDestination = false;
+		
+		// Reset standing patrol specific variables
+		if (NewState == EMonsterBehaviorState::PatrolStanding)
+		{
+			FailedNavAttempts = 0;
+		}
 		
 		// Reset crawling-specific variables
 		if (NewState == EMonsterBehaviorState::PatrolCrawling)
