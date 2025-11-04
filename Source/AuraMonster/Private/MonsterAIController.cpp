@@ -347,8 +347,6 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		
 		// Continue moving towards destination
 		// Use AddMovementInput for efficient movement with physics and navigation
-		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
-		
 		// AddMovementInput expects a normalized direction and scales by MaxWalkSpeed
 		// The character movement component will handle collision and physics
 		ControlledMonster->AddMovementInput(Direction, 1.0f);
@@ -424,8 +422,8 @@ void AMonsterAIController::OnEnterState_Implementation(EMonsterBehaviorState New
 			if (ControlledMonster)
 			{
 				FVector Location = ControlledMonster->GetActorLocation();
-				FVector TraceStart = Location + FVector(0.0f, 0.0f, 100.0f);
-				FVector TraceEnd = Location - FVector(0.0f, 0.0f, 200.0f);
+				FVector TraceStart = Location + FVector(0.0f, 0.0f, FallbackTraceUpDistance);
+				FVector TraceEnd = Location - FVector(0.0f, 0.0f, FallbackTraceDownDistance);
 				
 				FHitResult HitResult;
 				FCollisionQueryParams QueryParams;
