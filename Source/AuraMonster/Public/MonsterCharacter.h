@@ -35,6 +35,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	void SetBehaviorState(EMonsterBehaviorState NewState);
 
+	/** Internal method to set behavior state without triggering AI Controller synchronization */
+	void SetBehaviorStateInternal(EMonsterBehaviorState NewState);
+
 	/** Get the movement speed for the current behavior state */
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;

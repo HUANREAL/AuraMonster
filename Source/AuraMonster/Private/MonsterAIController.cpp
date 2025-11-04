@@ -84,10 +84,11 @@ void AMonsterAIController::BeginPlay()
 	// Initialize with current state (respects pre-configured state from editor)
 	if (ControlledMonster)
 	{
-		// Update monster character's state to match AI controller state
-		ControlledMonster->SetBehaviorState(CurrentState);
+		// Use internal method to set character state without triggering AI Controller sync
+		// This avoids unnecessary circular logic during initialization
+		ControlledMonster->SetBehaviorStateInternal(CurrentState);
 		
-		// Call OnEnterState to properly initialize the current state
+		// Initialize state-specific variables by calling OnEnterState
 		OnEnterState(CurrentState);
 	}
 }
@@ -123,10 +124,10 @@ void AMonsterAIController::TransitionToState(EMonsterBehaviorState NewState)
 		EMonsterBehaviorState OldState = CurrentState;
 		CurrentState = NewState;
 
-		// Update monster character's state
+		// Update monster character's state using internal method to avoid circular synchronization
 		if (ControlledMonster)
 		{
-			ControlledMonster->SetBehaviorState(NewState);
+			ControlledMonster->SetBehaviorStateInternal(NewState);
 		}
 
 		// Enter new state

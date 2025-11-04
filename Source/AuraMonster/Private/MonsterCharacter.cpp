@@ -72,6 +72,26 @@ void AMonsterCharacter::SetBehaviorState(EMonsterBehaviorState NewState)
 	}
 }
 
+void AMonsterCharacter::SetBehaviorStateInternal(EMonsterBehaviorState NewState)
+{
+	// Internal method used by AI Controller to set state without triggering synchronization
+	// This avoids circular calls during initialization and state transitions initiated by AI Controller
+	if (CurrentBehaviorState != NewState)
+	{
+		EMonsterBehaviorState OldState = CurrentBehaviorState;
+		CurrentBehaviorState = NewState;
+
+		// Update movement speed based on new state
+		if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+		{
+			MovementComp->MaxWalkSpeed = GetMovementSpeedForState(NewState);
+		}
+
+		// Notify about state change (but don't sync with AI Controller)
+		OnBehaviorStateChanged(OldState, NewState);
+	}
+}
+
 float AMonsterCharacter::GetMovementSpeedForState(EMonsterBehaviorState State) const
 {
 	switch (State)
