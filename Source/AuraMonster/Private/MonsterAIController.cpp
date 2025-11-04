@@ -49,6 +49,7 @@ AMonsterAIController::AMonsterAIController()
 	MinCrawlDistanceMultiplier = 0.3f;
 	SurfaceTraceDistanceMultiplier = 0.5f;
 	MovementDirectionBlendSpeed = 2.5f;
+	MinCrawlStepDistance = 10.0f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -371,7 +372,7 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		
 		// Get movement speed for crawling state
 		float MovementSpeed = ControlledMonster->GetMovementSpeedForState(EMonsterBehaviorState::PatrolCrawling);
-		float MovementDistance = MovementSpeed * DeltaTime;
+		float MovementDistance = FMath::Max(MovementSpeed * DeltaTime, MinCrawlStepDistance);
 		
 		// Calculate trace distance for surface detection
 		const float TraceDistance = CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
@@ -380,9 +381,6 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(ControlledMonster);
 		
-		// Strategy: Move along surfaces by projecting movement onto the surface
-		// This allows smooth crawling on walls, floors, ceilings, and transitions between them
-		
 		bool bFoundSurface = false;
 		FVector FinalPosition = CurrentLocation;
 		FVector FinalNormal = CurrentSurfaceNormal;
@@ -390,83 +388,46 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Calculate intended next position in 3D space
 		FVector IntendedNextPosition = CurrentLocation + ToDestination * MovementDistance;
 		
-		// Try to find a surface at the intended position
-		// Priority 1: Check along current surface normal (smooth movement on same surface)
+		// Simple and robust approach: Always try all three methods in order
+		// This ensures we can transition to walls and maintain movement
+		
+		// Method 1: Check for surface at intended position along current surface normal
 		FVector NormalTraceStart = IntendedNextPosition + CurrentSurfaceNormal * TraceDistance;
 		FVector NormalTraceEnd = IntendedNextPosition - CurrentSurfaceNormal * TraceDistance;
 		
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, NormalTraceStart, NormalTraceEnd, ECC_Visibility, QueryParams))
 		{
-			// Found surface along current normal - smooth movement
 			FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
 			FinalNormal = HitResult.ImpactNormal;
 			bFoundSurface = true;
 		}
-		else
+		
+		// Method 2: If no surface found, check directly in movement direction (wall transitions)
+		if (!bFoundSurface)
 		{
-			// Priority 2: Check along movement direction for obstacles/transitions
-			// This handles approaching walls, columns, etc.
 			FVector ForwardTraceStart = CurrentLocation;
 			FVector ForwardTraceEnd = IntendedNextPosition;
 			
 			if (GetWorld()->LineTraceSingleByChannel(HitResult, ForwardTraceStart, ForwardTraceEnd, ECC_Visibility, QueryParams))
 			{
-				// Hit an obstacle - this is a surface transition point
-				// Instead of stopping, transition onto this surface and continue movement
-				FVector TransitionPoint = HitResult.ImpactPoint;
-				FVector TransitionNormal = HitResult.ImpactNormal;
-				
-				// Calculate remaining movement distance after hitting the surface
-				float DistanceToHit = FVector::Dist(CurrentLocation, TransitionPoint);
-				float RemainingDistance = MovementDistance - DistanceToHit;
-				
-				// If we have remaining movement, continue along the new surface
-				if (RemainingDistance > 0.0f)
-				{
-					// Project remaining movement onto the new surface
-					FVector SurfaceRight = FVector::CrossProduct(TransitionNormal, ToDestination).GetSafeNormal();
-					FVector SurfaceForward = FVector::CrossProduct(SurfaceRight, TransitionNormal).GetSafeNormal();
-					FVector ContinuedMovement = SurfaceForward * RemainingDistance;
-					
-					// Try to find surface at the continued position
-					FVector ContinuedPosition = TransitionPoint + TransitionNormal * CrawlSurfaceOffset + ContinuedMovement;
-					FVector ContinuedTraceStart = ContinuedPosition + TransitionNormal * TraceDistance;
-					FVector ContinuedTraceEnd = ContinuedPosition - TransitionNormal * TraceDistance;
-					
-					if (GetWorld()->LineTraceSingleByChannel(HitResult, ContinuedTraceStart, ContinuedTraceEnd, ECC_Visibility, QueryParams))
-					{
-						FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
-						FinalNormal = HitResult.ImpactNormal;
-						bFoundSurface = true;
-					}
-					else
-					{
-						// Just use the transition point
-						FinalPosition = TransitionPoint + TransitionNormal * CrawlSurfaceOffset;
-						FinalNormal = TransitionNormal;
-						bFoundSurface = true;
-					}
-				}
-				else
-				{
-					// No remaining distance, just stick to the hit surface
-					FinalPosition = TransitionPoint + TransitionNormal * CrawlSurfaceOffset;
-					FinalNormal = TransitionNormal;
-					bFoundSurface = true;
-				}
+				// Hit a surface - transition to it
+				FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
+				FinalNormal = HitResult.ImpactNormal;
+				bFoundSurface = true;
 			}
-			else
+		}
+		
+		// Method 3: If still no surface, try downward trace (gravity fallback)
+		if (!bFoundSurface)
+		{
+			FVector DownTraceStart = IntendedNextPosition + FVector::UpVector * TraceDistance;
+			FVector DownTraceEnd = IntendedNextPosition - FVector::UpVector * TraceDistance;
+			
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, DownTraceStart, DownTraceEnd, ECC_Visibility, QueryParams))
 			{
-				// Priority 3: Try downward trace as fallback (gravity direction)
-				FVector DownTraceStart = IntendedNextPosition + FVector::UpVector * TraceDistance;
-				FVector DownTraceEnd = IntendedNextPosition - FVector::UpVector * TraceDistance;
-				
-				if (GetWorld()->LineTraceSingleByChannel(HitResult, DownTraceStart, DownTraceEnd, ECC_Visibility, QueryParams))
-				{
-					FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
-					FinalNormal = HitResult.ImpactNormal;
-					bFoundSurface = true;
-				}
+				FinalPosition = HitResult.ImpactPoint + HitResult.ImpactNormal * CrawlSurfaceOffset;
+				FinalNormal = HitResult.ImpactNormal;
+				bFoundSurface = true;
 			}
 		}
 		

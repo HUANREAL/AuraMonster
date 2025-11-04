@@ -154,6 +154,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling|Advanced", meta = (ClampMin = "0.1", ClampMax = "10.0"))
 	float MovementDirectionBlendSpeed;
 
+	/** Minimum movement step distance per frame to ensure progress (prevents getting stuck) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling|Advanced", meta = (ClampMin = "1.0", ClampMax = "100.0"))
+	float MinCrawlStepDistance;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(EditAnywhere, Category = "Monster AI")
