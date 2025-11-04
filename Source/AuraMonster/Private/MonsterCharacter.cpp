@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MonsterCharacter.h"
+#include "MonsterAIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -54,7 +55,52 @@ void AMonsterCharacter::SetBehaviorState(EMonsterBehaviorState NewState)
 			MovementComp->MaxWalkSpeed = GetMovementSpeedForState(NewState);
 		}
 
+		// Notify AI Controller about state change if this was called directly
+		// (not from AI Controller's TransitionToState)
+		if (AMonsterAIController* AIController = Cast<AMonsterAIController>(GetController()))
+		{
+			// Only transition if AI Controller is not already in this state
+			// This prevents infinite loops when called from AIController->TransitionToState
+			if (AIController->GetCurrentState() != NewState)
+			{
+				AIController->TransitionToState(NewState);
+			}
+		}
+
 		// Notify about state change
+		OnBehaviorStateChanged(OldState, NewState);
+	}
+}
+
+/**
+ * Internal method to set behavior state without triggering AI Controller synchronization.
+ * 
+ * This method is used exclusively by MonsterAIController during:
+ * - Initial state setup in BeginPlay()
+ * - State transitions initiated by the AI Controller via TransitionToState()
+ * 
+ * Unlike SetBehaviorState(), this method does NOT notify the AI Controller of the state change,
+ * preventing circular calls. External code should use SetBehaviorState() instead, which provides
+ * full bidirectional synchronization between the character and AI controller.
+ * 
+ * @param NewState The new behavior state to set
+ */
+void AMonsterCharacter::SetBehaviorStateInternal(EMonsterBehaviorState NewState)
+{
+	// Internal method used by AI Controller to set state without triggering synchronization
+	// This avoids circular calls during initialization and state transitions initiated by AI Controller
+	if (CurrentBehaviorState != NewState)
+	{
+		EMonsterBehaviorState OldState = CurrentBehaviorState;
+		CurrentBehaviorState = NewState;
+
+		// Update movement speed based on new state
+		if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+		{
+			MovementComp->MaxWalkSpeed = GetMovementSpeedForState(NewState);
+		}
+
+		// Notify about state change (but don't sync with AI Controller)
 		OnBehaviorStateChanged(OldState, NewState);
 	}
 }

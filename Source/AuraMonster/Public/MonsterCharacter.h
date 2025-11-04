@@ -39,6 +39,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster")
 	float GetMovementSpeedForState(EMonsterBehaviorState State) const;
 
+protected:
+	/** 
+	 * Internal method to set behavior state without triggering AI Controller synchronization.
+	 * This should only be called by MonsterAIController to avoid circular state updates.
+	 * Use SetBehaviorState() for external state changes that need full synchronization.
+	 */
+	void SetBehaviorStateInternal(EMonsterBehaviorState NewState);
+
+	// Declare MonsterAIController as a friend to allow access to internal methods
+	friend class AMonsterAIController;
+
 	/** Called when a subtle neck twitch should be animated */
 	UFUNCTION(BlueprintNativeEvent, Category = "Monster|Idle")
 	void OnNeckTwitch();
