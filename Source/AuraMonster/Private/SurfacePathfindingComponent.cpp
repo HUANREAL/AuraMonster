@@ -139,6 +139,9 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 			OutLocation = HitResult.Location;
 			OutNormal = HitResult.Normal;
 			
+			// Move the location slightly away from the surface to avoid being embedded
+			OutLocation += OutNormal * 10.0f;
+			
 			// Prefer surfaces that change orientation (e.g., floor to wall transitions)
 			// This helps with crawling down from columns
 			if (bIsOnSurface)
@@ -149,14 +152,9 @@ bool USurfacePathfindingComponent::GetRandomSurfaceLocation(const FVector& Origi
 				// it's a good transition candidate - accept it immediately
 				if (DotProduct < 0.5f)
 				{
-					// Move the location slightly away from the surface to avoid being embedded
-					OutLocation += OutNormal * 10.0f;
 					return true;
 				}
 			}
-			
-			// Move the location slightly away from the surface to avoid being embedded
-			OutLocation += OutNormal * 10.0f;
 			
 			return true;
 		}
