@@ -47,6 +47,8 @@ AMonsterAIController::AMonsterAIController()
 	MinTransitionPitch = -75.0f;
 	MaxTransitionPitch = 75.0f;
 	MinCrawlDistanceMultiplier = 0.3f;
+	SurfaceTraceDistanceMultiplier = 0.5f;
+	MovementDirectionBlendSpeed = 2.5f;
 
 	// Initialize timing variables
 	CurrentIdleTime = 0.0f;
@@ -377,8 +379,8 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Trace to find the surface beneath/beside the new position
 		// This allows the monster to continuously follow the surface contours
 		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
-		FVector TraceStart = NextPosition + SurfaceCheckNormal * CrawlSurfaceDetectionDistance * 0.5f;
-		FVector TraceEnd = NextPosition - SurfaceCheckNormal * CrawlSurfaceDetectionDistance * 0.5f;
+		FVector TraceStart = NextPosition + SurfaceCheckNormal * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
+		FVector TraceEnd = NextPosition - SurfaceCheckNormal * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
 		
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;
@@ -406,11 +408,12 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			bool bFoundSurface = false;
 			
 			// Try tracing in multiple directions using pre-allocated static array
-			for (int32 i = 0; i < 6; ++i)
+			const int32 NumTraceDirections = UE_ARRAY_COUNT(FallbackTraceDirections);
+			for (int32 i = 0; i < NumTraceDirections; ++i)
 			{
 				const FVector& TraceDir = FallbackTraceDirections[i];
-				FVector MultiTraceStart = NextPosition + TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
-				FVector MultiTraceEnd = NextPosition - TraceDir * CrawlSurfaceDetectionDistance * 0.5f;
+				FVector MultiTraceStart = NextPosition + TraceDir * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
+				FVector MultiTraceEnd = NextPosition - TraceDir * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
 				
 				if (GetWorld()->LineTraceSingleByChannel(HitResult, MultiTraceStart, MultiTraceEnd, ECC_Visibility, QueryParams))
 				{
@@ -661,7 +664,8 @@ void AMonsterAIController::UpdateSurfaceAlignment(float DeltaTime)
 		if (!ToDestination.IsNearlyZero())
 		{
 			// Blend current forward with destination direction for smoother turning
-			ForwardVector = FMath::VInterpTo(ForwardVector, ToDestination, DeltaTime, SurfaceAlignmentSpeed * 0.5f);
+			// Use configurable blend speed for tunable turning behavior
+			ForwardVector = FMath::VInterpTo(ForwardVector, ToDestination, DeltaTime, MovementDirectionBlendSpeed);
 		}
 	}
 	

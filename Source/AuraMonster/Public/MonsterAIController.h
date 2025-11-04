@@ -146,6 +146,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float MinCrawlDistanceMultiplier;
 
+	/** Multiplier for trace distance when detecting surfaces during crawling (0.5 = half detection distance in each direction) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling|Advanced", meta = (ClampMin = "0.1", ClampMax = "1.0"))
+	float SurfaceTraceDistanceMultiplier;
+
+	/** Speed at which forward direction blends with movement destination during crawling (lower = smoother turns) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster AI|Patrol Crawling|Advanced", meta = (ClampMin = "0.1", ClampMax = "10.0"))
+	float MovementDirectionBlendSpeed;
+
 private:
 	/** Current behavior state */
 	UPROPERTY(EditAnywhere, Category = "Monster AI")
