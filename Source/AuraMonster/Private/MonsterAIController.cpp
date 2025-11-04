@@ -376,22 +376,24 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 		// Calculate the next position
 		FVector NextPosition = CurrentLocation + ToDestination * MovementDistance;
 		
+		// Calculate trace distance for surface detection
+		const float TraceDistance = CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
+		
 		// Trace to find the surface beneath/beside the new position
 		// This allows the monster to continuously follow the surface contours
 		FVector SurfaceCheckNormal = CurrentSurfaceNormal;
-		FVector TraceStart = NextPosition + SurfaceCheckNormal * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
-		FVector TraceEnd = NextPosition - SurfaceCheckNormal * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
+		FVector TraceStart = NextPosition + SurfaceCheckNormal * TraceDistance;
+		FVector TraceEnd = NextPosition - SurfaceCheckNormal * TraceDistance;
 		
 		FHitResult HitResult;
 		FCollisionQueryParams QueryParams;
 		QueryParams.AddIgnoredActor(ControlledMonster);
 		
-		// Trace to find the actual surface at the new position
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		// Lambda to update position on detected surface
+		auto UpdatePositionOnSurface = [&](const FHitResult& Hit)
 		{
-			// Found a surface, stick to it
-			FVector SurfacePoint = HitResult.ImpactPoint;
-			FVector SurfaceNormal = HitResult.ImpactNormal;
+			FVector SurfacePoint = Hit.ImpactPoint;
+			FVector SurfaceNormal = Hit.ImpactNormal;
 			
 			// Update position to be on the surface with proper offset
 			FVector NewLocation = SurfacePoint + SurfaceNormal * CrawlSurfaceOffset;
@@ -399,6 +401,13 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			
 			// Update target surface normal for smooth alignment
 			TargetSurfaceNormal = SurfaceNormal;
+		};
+		
+		// Trace to find the actual surface at the new position
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+		{
+			// Found a surface, stick to it
+			UpdatePositionOnSurface(HitResult);
 		}
 		else
 		{
@@ -412,21 +421,13 @@ void AMonsterAIController::ExecutePatrolCrawlingBehavior_Implementation(float De
 			for (int32 i = 0; i < NumTraceDirections; ++i)
 			{
 				const FVector& TraceDir = FallbackTraceDirections[i];
-				FVector MultiTraceStart = NextPosition + TraceDir * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
-				FVector MultiTraceEnd = NextPosition - TraceDir * CrawlSurfaceDetectionDistance * SurfaceTraceDistanceMultiplier;
+				FVector MultiTraceStart = NextPosition + TraceDir * TraceDistance;
+				FVector MultiTraceEnd = NextPosition - TraceDir * TraceDistance;
 				
 				if (GetWorld()->LineTraceSingleByChannel(HitResult, MultiTraceStart, MultiTraceEnd, ECC_Visibility, QueryParams))
 				{
 					// Found a surface
-					FVector SurfacePoint = HitResult.ImpactPoint;
-					FVector SurfaceNormal = HitResult.ImpactNormal;
-					
-					// Update position to be on the surface with proper offset
-					FVector NewLocation = SurfacePoint + SurfaceNormal * CrawlSurfaceOffset;
-					ControlledMonster->SetActorLocation(NewLocation);
-					
-					// Update target surface normal for smooth alignment
-					TargetSurfaceNormal = SurfaceNormal;
+					UpdatePositionOnSurface(HitResult);
 					bFoundSurface = true;
 					break;
 				}
